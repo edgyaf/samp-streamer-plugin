@@ -68,6 +68,7 @@ struct Player
 	std::unordered_set<int> internalAreas;
 	std::unordered_map<int, int> internalMapIcons;
 	std::unordered_map<int, int> internalObjects;
+	std::unordered_map<int, int> internalObjectIds;
 	std::unordered_map<int, int> internalTextLabels;
 
 	std::unordered_set<int> removedMapIcons;
@@ -75,6 +76,9 @@ struct Player
 	std::unordered_set<int> removedTextLabels;
 
 	Identifier mapIconIdentifier;
+
+	void insertInternalObject(int streamerId, int internalId);
+	std::unordered_map<int, int>::iterator eraseInternalObject(std::unordered_map<int, int>::iterator object);
 
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };

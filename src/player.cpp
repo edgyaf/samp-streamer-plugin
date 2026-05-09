@@ -43,6 +43,19 @@ Player::Player(int id)
 	maxVisibleMapIcons = core->getData()->getGlobalMaxVisibleItems(STREAMER_TYPE_MAP_ICON);
 	maxVisibleObjects = core->getData()->getGlobalMaxVisibleItems(STREAMER_TYPE_OBJECT);
 	maxVisibleTextLabels = core->getData()->getGlobalMaxVisibleItems(STREAMER_TYPE_3D_TEXT_LABEL);
+	if (maxVisibleMapIcons <= 4096)
+	{
+		internalMapIcons.reserve(maxVisibleMapIcons);
+	}
+	if (maxVisibleObjects <= 4096)
+	{
+		internalObjects.reserve(maxVisibleObjects);
+		internalObjectIds.reserve(maxVisibleObjects);
+	}
+	if (maxVisibleTextLabels <= 4096)
+	{
+		internalTextLabels.reserve(maxVisibleTextLabels);
+	}
 	playerId = id;
 	position.setZero();
 	radiusMultipliers[STREAMER_TYPE_OBJECT] = core->getData()->getGlobalRadiusMultiplier(STREAMER_TYPE_OBJECT);
@@ -62,4 +75,25 @@ Player::Player(int id)
 	visibleCheckpoint = 0;
 	visibleRaceCheckpoint = 0;
 	worldId = 0;
+}
+
+void Player::insertInternalObject(int streamerId, int internalId)
+{
+	std::unordered_map<int, int>::iterator object = internalObjects.find(streamerId);
+	if (object != internalObjects.end())
+	{
+		internalObjectIds.erase(object->second);
+		object->second = internalId;
+	}
+	else
+	{
+		internalObjects.insert(std::make_pair(streamerId, internalId));
+	}
+	internalObjectIds[internalId] = streamerId;
+}
+
+std::unordered_map<int, int>::iterator Player::eraseInternalObject(std::unordered_map<int, int>::iterator object)
+{
+	internalObjectIds.erase(object->second);
+	return internalObjects.erase(object);
 }
