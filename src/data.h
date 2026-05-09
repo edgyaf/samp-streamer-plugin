@@ -36,6 +36,11 @@ public:
 	float getGlobalRadiusMultiplier(int type);
 	bool setGlobalRadiusMultiplier(int type, float value);
 
+	void insertInternalActor(int streamerId, int worldId, int internalId);
+	std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator eraseInternalActor(std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator actor);
+	void insertInternalPickup(int streamerId, int worldId, int internalId);
+	std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator eraseInternalPickup(std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator pickup);
+
 	bool errorCallbackEnabled;
 
 	std::set<AMX*> interfaces;
@@ -48,6 +53,8 @@ public:
 
 	std::unordered_map<std::pair<int, int>, int, pair_hash> internalActors;
 	std::unordered_map<std::pair<int, int>, int, pair_hash> internalPickups;
+	std::unordered_map<int, std::pair<int, int> > internalActorIds;
+	std::unordered_map<int, std::pair<int, int> > internalPickupIds;
 
 	std::unordered_map<int, Item::SharedActor> actors;
 	std::unordered_map<int, Item::SharedArea> areas;

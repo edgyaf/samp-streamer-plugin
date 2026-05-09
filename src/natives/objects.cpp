@@ -744,12 +744,10 @@ cell AMX_NATIVE_CALL Natives::GetPlayerCameraTargetDynObject(AMX *amx, cell *par
 		int objectid = ompgdk::GetPlayerCameraTargetObject(p->second.playerId);
 		if (objectid != INVALID_OBJECT_ID)
 		{
-			for (std::unordered_map<int, int>::iterator i = p->second.internalObjects.begin(); i != p->second.internalObjects.end(); ++i)
+			std::unordered_map<int, int>::iterator i = p->second.internalObjectIds.find(objectid);
+			if (i != p->second.internalObjectIds.end())
 			{
-				if (i->second == objectid)
-				{
-					return i->first;
-				}
+				return i->second;
 			}
 		}
 	}

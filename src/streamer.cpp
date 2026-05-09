@@ -19,6 +19,58 @@
 #include "streamer.h"
 #include "core.h"
 
+namespace
+{
+	bool findPublicCached(std::unordered_map<AMX*, int> &publicCache, AMX *amx, const char *name, int &amxIndex)
+	{
+		std::unordered_map<AMX*, int>::iterator cached = publicCache.find(amx);
+		if (cached != publicCache.end())
+		{
+			amxIndex = cached->second;
+			return amxIndex >= 0;
+		}
+		if (!amx_FindPublic(amx, name, &amxIndex))
+		{
+			publicCache.insert(std::make_pair(amx, amxIndex));
+			return true;
+		}
+		publicCache.insert(std::make_pair(amx, -1));
+		return false;
+	}
+
+	bool isStreamCallbackItemValid(int type, int id)
+	{
+		switch (type)
+		{
+			case STREAMER_TYPE_OBJECT:
+			{
+				return core->getData()->objects.find(id) != core->getData()->objects.end();
+			}
+			case STREAMER_TYPE_PICKUP:
+			{
+				return core->getData()->pickups.find(id) != core->getData()->pickups.end();
+			}
+			case STREAMER_TYPE_CP:
+			{
+				return core->getData()->checkpoints.find(id) != core->getData()->checkpoints.end();
+			}
+			case STREAMER_TYPE_RACE_CP:
+			{
+				return core->getData()->raceCheckpoints.find(id) != core->getData()->raceCheckpoints.end();
+			}
+			case STREAMER_TYPE_MAP_ICON:
+			{
+				return core->getData()->mapIcons.find(id) != core->getData()->mapIcons.end();
+			}
+			case STREAMER_TYPE_3D_TEXT_LABEL:
+			{
+				return core->getData()->textLabels.find(id) != core->getData()->textLabels.end();
+			}
+		}
+		return true;
+	}
+}
+
 Streamer::Streamer()
 {
 	averageElapsedTime = 0.0f;
@@ -412,6 +464,8 @@ void Streamer::executeCallbacks()
 	{
 		std::multimap<int, std::tuple<int, int> > callbacks;
 		std::swap(areaLeaveCallbacks, callbacks);
+		std::unordered_map<AMX*, int> publicCache;
+		publicCache.reserve(core->getData()->interfaces.size());
 		for (std::multimap<int, std::tuple<int, int> >::reverse_iterator c = callbacks.rbegin(); c != callbacks.rend(); ++c)
 		{
 			std::unordered_map<int, Item::SharedArea>::iterator a = core->getData()->areas.find(std::get<0>(c->second));
@@ -420,7 +474,7 @@ void Streamer::executeCallbacks()
 				for (std::set<AMX*>::iterator i = core->getData()->interfaces.begin(); i != core->getData()->interfaces.end(); ++i)
 				{
 					int amxIndex = 0;
-					if (!amx_FindPublic(*i, "OnPlayerLeaveDynamicArea", &amxIndex))
+					if (findPublicCached(publicCache, *i, "OnPlayerLeaveDynamicArea", amxIndex))
 					{
 						amx_Push(*i, static_cast<cell>(std::get<0>(c->second)));
 						amx_Push(*i, static_cast<cell>(std::get<1>(c->second)));
@@ -434,6 +488,8 @@ void Streamer::executeCallbacks()
 	{
 		std::multimap<int, std::tuple<int, int> > callbacks;
 		std::swap(areaEnterCallbacks, callbacks);
+		std::unordered_map<AMX*, int> publicCache;
+		publicCache.reserve(core->getData()->interfaces.size());
 		for (std::multimap<int, std::tuple<int, int> >::reverse_iterator c = callbacks.rbegin(); c != callbacks.rend(); ++c)
 		{
 			std::unordered_map<int, Item::SharedArea>::iterator a = core->getData()->areas.find(std::get<0>(c->second));
@@ -442,7 +498,7 @@ void Streamer::executeCallbacks()
 				for (std::set<AMX*>::iterator i = core->getData()->interfaces.begin(); i != core->getData()->interfaces.end(); ++i)
 				{
 					int amxIndex = 0;
-					if (!amx_FindPublic(*i, "OnPlayerEnterDynamicArea", &amxIndex))
+					if (findPublicCached(publicCache, *i, "OnPlayerEnterDynamicArea", amxIndex))
 					{
 						amx_Push(*i, static_cast<cell>(std::get<0>(c->second)));
 						amx_Push(*i, static_cast<cell>(std::get<1>(c->second)));
@@ -456,6 +512,8 @@ void Streamer::executeCallbacks()
 	{
 		std::vector<int> callbacks;
 		std::swap(objectMoveCallbacks, callbacks);
+		std::unordered_map<AMX*, int> publicCache;
+		publicCache.reserve(core->getData()->interfaces.size());
 		for (std::vector<int>::const_iterator c = callbacks.begin(); c != callbacks.end(); ++c)
 		{
 			std::unordered_map<int, Item::SharedObject>::iterator o = core->getData()->objects.find(*c);
@@ -464,7 +522,7 @@ void Streamer::executeCallbacks()
 				for (std::set<AMX*>::iterator i = core->getData()->interfaces.begin(); i != core->getData()->interfaces.end(); ++i)
 				{
 					int amxIndex = 0;
-					if (!amx_FindPublic(*i, "OnDynamicObjectMoved", &amxIndex))
+					if (findPublicCached(publicCache, *i, "OnDynamicObjectMoved", amxIndex))
 					{
 						amx_Push(*i, static_cast<cell>(*c));
 						amx_Exec(*i, NULL, amxIndex);
@@ -477,63 +535,18 @@ void Streamer::executeCallbacks()
 	{
 		std::vector<std::tuple<int, int, int> > callbacks;
 		std::swap(streamInCallbacks, callbacks);
+		std::unordered_map<AMX*, int> publicCache;
+		publicCache.reserve(core->getData()->interfaces.size());
 		for (std::vector<std::tuple<int, int, int> >::const_iterator c = callbacks.begin(); c != callbacks.end(); ++c)
 		{
-			switch (std::get<0>(*c))
+			if (!isStreamCallbackItemValid(std::get<0>(*c), std::get<1>(*c)))
 			{
-				case STREAMER_TYPE_OBJECT:
-				{
-					if (core->getData()->objects.find(std::get<1>(*c)) == core->getData()->objects.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_PICKUP:
-				{
-					if (core->getData()->pickups.find(std::get<1>(*c)) == core->getData()->pickups.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_CP:
-				{
-					if (core->getData()->checkpoints.find(std::get<1>(*c)) == core->getData()->checkpoints.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_RACE_CP:
-				{
-					if (core->getData()->raceCheckpoints.find(std::get<1>(*c)) == core->getData()->raceCheckpoints.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_MAP_ICON:
-				{
-					if (core->getData()->mapIcons.find(std::get<1>(*c)) == core->getData()->mapIcons.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_3D_TEXT_LABEL:
-				{
-					if (core->getData()->textLabels.find(std::get<1>(*c)) == core->getData()->textLabels.end())
-					{
-						continue;
-					}
-					break;
-				}
+				continue;
 			}
 			for (std::set<AMX*>::iterator i = core->getData()->interfaces.begin(); i != core->getData()->interfaces.end(); ++i)
 			{
 				int amxIndex = 0;
-				if (!amx_FindPublic(*i, "Streamer_OnItemStreamIn", &amxIndex))
+				if (findPublicCached(publicCache, *i, "Streamer_OnItemStreamIn", amxIndex))
 				{
 					amx_Push(*i, static_cast<cell>(std::get<2>(*c)));
 					amx_Push(*i, static_cast<cell>(std::get<1>(*c)));
@@ -547,63 +560,18 @@ void Streamer::executeCallbacks()
 	{
 		std::vector<std::tuple<int, int, int> > callbacks;
 		std::swap(streamOutCallbacks, callbacks);
+		std::unordered_map<AMX*, int> publicCache;
+		publicCache.reserve(core->getData()->interfaces.size());
 		for (std::vector<std::tuple<int, int, int> >::const_iterator c = callbacks.begin(); c != callbacks.end(); ++c)
 		{
-			switch (std::get<0>(*c))
+			if (!isStreamCallbackItemValid(std::get<0>(*c), std::get<1>(*c)))
 			{
-				case STREAMER_TYPE_OBJECT:
-				{
-					if (core->getData()->objects.find(std::get<1>(*c)) == core->getData()->objects.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_PICKUP:
-				{
-					if (core->getData()->pickups.find(std::get<1>(*c)) == core->getData()->pickups.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_CP:
-				{
-					if (core->getData()->checkpoints.find(std::get<1>(*c)) == core->getData()->checkpoints.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_RACE_CP:
-				{
-					if (core->getData()->raceCheckpoints.find(std::get<1>(*c)) == core->getData()->raceCheckpoints.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_MAP_ICON:
-				{
-					if (core->getData()->mapIcons.find(std::get<1>(*c)) == core->getData()->mapIcons.end())
-					{
-						continue;
-					}
-					break;
-				}
-				case STREAMER_TYPE_3D_TEXT_LABEL:
-				{
-					if (core->getData()->textLabels.find(std::get<1>(*c)) == core->getData()->textLabels.end())
-					{
-						continue;
-					}
-					break;
-				}
+				continue;
 			}
 			for (std::set<AMX*>::iterator i = core->getData()->interfaces.begin(); i != core->getData()->interfaces.end(); ++i)
 			{
 				int amxIndex = 0;
-				if (!amx_FindPublic(*i, "Streamer_OnItemStreamOut", &amxIndex))
+				if (findPublicCached(publicCache, *i, "Streamer_OnItemStreamOut", amxIndex))
 				{
 					amx_Push(*i, static_cast<cell>(std::get<2>(*c)));
 					amx_Push(*i, static_cast<cell>(std::get<1>(*c)));
@@ -676,7 +644,7 @@ void Streamer::streamActors()
 		if (d == core->getData()->discoveredActors.end())
 		{
 			ompgdk::DestroyActor(i->second);
-			i = core->getData()->internalActors.erase(i);
+			i = core->getData()->eraseInternalActor(i);
 		}
 		else
 		{
@@ -713,7 +681,7 @@ void Streamer::streamActors()
 		{
 			ompgdk::ApplyActorAnimation(internalId, s->second.second->anim->lib.c_str(), s->second.second->anim->name.c_str(), s->second.second->anim->delta, s->second.second->anim->loop, s->second.second->anim->lockx, s->second.second->anim->locky, s->second.second->anim->freeze, s->second.second->anim->time);
 		}
-		core->getData()->internalActors.insert(std::make_pair(std::make_pair(s->second.second->actorId, s->second.first), internalId));
+		core->getData()->insertInternalActor(s->second.second->actorId, s->second.first, internalId);
 	}
 }
 
@@ -1170,7 +1138,7 @@ void Streamer::streamPickups()
 					streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_PICKUP, i->first.first, INVALID_PLAYER_ID));
 				}
 			}
-			i = core->getData()->internalPickups.erase(i);
+			i = core->getData()->eraseInternalPickup(i);
 		}
 		else
 		{
@@ -1204,7 +1172,7 @@ void Streamer::streamPickups()
 		{
 			streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_PICKUP, s->second.second->pickupId, INVALID_PLAYER_ID));
 		}
-		core->getData()->internalPickups.insert(std::make_pair(std::make_pair(s->second.second->pickupId, s->second.first), internalId));
+		core->getData()->insertInternalPickup(s->second.second->pickupId, s->second.first, internalId);
 	}
 }
 

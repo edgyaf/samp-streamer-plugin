@@ -30,7 +30,7 @@ std::unordered_map<int, Item::SharedActor>::iterator Utility::destroyActor(std::
 		if (i != core->getData()->internalActors.end())
 		{
 			core->getData()->destroyedActors.push_back(i->second);
-			core->getData()->internalActors.erase(i);
+			core->getData()->eraseInternalActor(i);
 		}
 		std::unordered_map<std::pair<int, int>, Item::SharedActor, pair_hash>::iterator d = core->getData()->discoveredActors.find(std::make_pair(a->first, *w));
 		if (d != core->getData()->discoveredActors.end())
@@ -145,7 +145,7 @@ std::unordered_map<int, Item::SharedPickup>::iterator Utility::destroyPickup(std
 		if (i != core->getData()->internalPickups.end())
 		{
 			ompgdk::DestroyPickup(i->second);
-			core->getData()->internalPickups.erase(i);
+			core->getData()->eraseInternalPickup(i);
 		}
 		std::unordered_map<std::pair<int, int>, Item::SharedPickup, pair_hash>::iterator d = core->getData()->discoveredPickups.find(std::make_pair(p->first, *w));
 		if (d != core->getData()->discoveredPickups.end())

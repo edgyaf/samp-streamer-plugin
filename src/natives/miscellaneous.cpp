@@ -702,23 +702,19 @@ cell AMX_NATIVE_CALL Natives::Streamer_GetItemStreamerID(AMX *amx, cell *params)
 	{
 		case STREAMER_TYPE_PICKUP:
 		{
-			for (std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator i = core->getData()->internalPickups.begin(); i != core->getData()->internalPickups.end(); ++i)
+			std::unordered_map<int, std::pair<int, int> >::iterator i = core->getData()->internalPickupIds.find(static_cast<int>(params[3]));
+			if (i != core->getData()->internalPickupIds.end())
 			{
-				if (i->second == static_cast<int>(params[3]))
-				{
-					return i->first.first;
-				}
+				return i->second.first;
 			}
 			return INVALID_STREAMER_ID;
 		}
 		case STREAMER_TYPE_ACTOR:
 		{
-			for (std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator i = core->getData()->internalActors.begin(); i != core->getData()->internalActors.end(); ++i)
+			std::unordered_map<int, std::pair<int, int> >::iterator i = core->getData()->internalActorIds.find(static_cast<int>(params[3]));
+			if (i != core->getData()->internalActorIds.end())
 			{
-				if (i->second == static_cast<int>(params[3]))
-				{
-					return i->first.first;
-				}
+				return i->second.first;
 			}
 			return INVALID_STREAMER_ID;
 		}
@@ -730,12 +726,10 @@ cell AMX_NATIVE_CALL Natives::Streamer_GetItemStreamerID(AMX *amx, cell *params)
 		{
 			case STREAMER_TYPE_OBJECT:
 			{
-				for (std::unordered_map<int, int>::iterator i = p->second.internalObjects.begin(); i != p->second.internalObjects.end(); ++i)
+				std::unordered_map<int, int>::iterator i = p->second.internalObjectIds.find(static_cast<int>(params[3]));
+				if (i != p->second.internalObjectIds.end())
 				{
-					if (i->second == static_cast<int>(params[3]))
-					{
-						return i->first;
-					}
+					return i->second;
 				}
 				return INVALID_STREAMER_ID;
 			}
@@ -911,7 +905,7 @@ cell AMX_NATIVE_CALL Natives::Streamer_DestroyAllVisibleItems(AMX *amx, cell *pa
 				if (serverWide || (p != core->getData()->pickups.end() && p->second->amx == amx))
 				{
 					ompgdk::DestroyPickup(i->second);
-					i = core->getData()->internalPickups.erase(i);
+					i = core->getData()->eraseInternalPickup(i);
 				}
 				else
 				{
@@ -929,7 +923,7 @@ cell AMX_NATIVE_CALL Natives::Streamer_DestroyAllVisibleItems(AMX *amx, cell *pa
 				if (serverWide || (a != core->getData()->actors.end() && a->second->amx == amx))
 				{
 					ompgdk::DestroyActor(i->second);
-					i = core->getData()->internalActors.erase(i);
+					i = core->getData()->eraseInternalActor(i);
 				}
 				else
 				{

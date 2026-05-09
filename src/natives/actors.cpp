@@ -367,12 +367,10 @@ cell AMX_NATIVE_CALL Natives::GetPlayerTargetDynamicActor(AMX *amx, cell *params
 		int actorid = ompgdk::GetPlayerTargetActor(p->second.playerId);
 		if (actorid != INVALID_ACTOR_ID)
 		{
-			for (std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator i = core->getData()->internalActors.begin(); i != core->getData()->internalActors.end(); ++i)
+			std::unordered_map<int, std::pair<int, int> >::iterator i = core->getData()->internalActorIds.find(actorid);
+			if (i != core->getData()->internalActorIds.end())
 			{
-				if (i->second == actorid)
-				{
-					return i->first.first;
-				}
+				return i->second.first;
 			}
 		}
 	}
@@ -388,12 +386,10 @@ cell AMX_NATIVE_CALL Natives::GetPlayerCameraTargetDynActor(AMX *amx, cell *para
 		int actorid = ompgdk::GetPlayerCameraTargetActor(p->second.playerId);
 		if (actorid != INVALID_ACTOR_ID)
 		{
-			for (std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator i = core->getData()->internalActors.begin(); i != core->getData()->internalActors.end(); ++i)
+			std::unordered_map<int, std::pair<int, int> >::iterator i = core->getData()->internalActorIds.find(actorid);
+			if (i != core->getData()->internalActorIds.end())
 			{
-				if (i->second == actorid)
-				{
-					return i->first.first;
-				}
+				return i->second.first;
 			}
 		}
 	}

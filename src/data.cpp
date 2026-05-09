@@ -57,6 +57,46 @@ Data::Data()
 		STREAMER_TYPE_ACTOR
 	};
 	typePriority.assign(defaultTypePriority, defaultTypePriority + (sizeof(defaultTypePriority) / sizeof(defaultTypePriority[0])));
+	internalActors.reserve(globalMaxVisibleItems[STREAMER_TYPE_ACTOR]);
+	internalActorIds.reserve(globalMaxVisibleItems[STREAMER_TYPE_ACTOR]);
+	internalPickups.reserve(globalMaxVisibleItems[STREAMER_TYPE_PICKUP]);
+	internalPickupIds.reserve(globalMaxVisibleItems[STREAMER_TYPE_PICKUP]);
+}
+
+void Data::insertInternalActor(int streamerId, int worldId, int internalId)
+{
+	const std::pair<int, int> key = std::make_pair(streamerId, worldId);
+	std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator actor = internalActors.find(key);
+	if (actor != internalActors.end())
+	{
+		internalActorIds.erase(actor->second);
+	}
+	internalActors[key] = internalId;
+	internalActorIds[internalId] = key;
+}
+
+std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator Data::eraseInternalActor(std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator actor)
+{
+	internalActorIds.erase(actor->second);
+	return internalActors.erase(actor);
+}
+
+void Data::insertInternalPickup(int streamerId, int worldId, int internalId)
+{
+	const std::pair<int, int> key = std::make_pair(streamerId, worldId);
+	std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator pickup = internalPickups.find(key);
+	if (pickup != internalPickups.end())
+	{
+		internalPickupIds.erase(pickup->second);
+	}
+	internalPickups[key] = internalId;
+	internalPickupIds[internalId] = key;
+}
+
+std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator Data::eraseInternalPickup(std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator pickup)
+{
+	internalPickupIds.erase(pickup->second);
+	return internalPickups.erase(pickup);
 }
 
 std::size_t Data::getGlobalChunkTickRate(int type)
