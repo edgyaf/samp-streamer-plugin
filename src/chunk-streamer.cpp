@@ -122,7 +122,7 @@ void ChunkStreamer::discoverMapIcons(Player &player, const std::vector<SharedCel
 				}
 				else
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(m->second->position + m->second->positionOffset)));
+					distance = (player.position - (m->second->position + m->second->positionOffset)).squaredNorm();
 				}
 			}
 			std::unordered_map<int, int>::iterator i = player.internalMapIcons.find(m->first);
@@ -275,11 +275,11 @@ void ChunkStreamer::discoverObjects(Player &player, const std::vector<SharedCell
 				{
 					if (o->second->attach)
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, o->second->attach->position)) + std::numeric_limits<float>::epsilon();
+						distance = (player.position - o->second->attach->position).squaredNorm() + std::numeric_limits<float>::epsilon();
 					}
 					else
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(o->second->position + o->second->positionOffset)));
+						distance = (player.position - (o->second->position + o->second->positionOffset)).squaredNorm();
 					}
 				}
 			}
@@ -489,11 +489,11 @@ void ChunkStreamer::discoverTextLabels(Player &player, const std::vector<SharedC
 				{
 					if (t->second->attach)
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, t->second->attach->position));
+						distance = (player.position - t->second->attach->position).squaredNorm();
 					}
 					else
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(t->second->position + t->second->positionOffset)));
+						distance = (player.position - (t->second->position + t->second->positionOffset)).squaredNorm();
 					}
 				}
 			}

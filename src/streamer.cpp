@@ -631,7 +631,7 @@ void Streamer::discoverActors(Player &player, const std::vector<SharedCell> &cel
 					{
 						if (doesPlayerSatisfyConditions(a->second->players, player.playerId, a->second->interiors, player.interiorId, a->second->worlds, -1, a->second->areas, player.internalAreas, a->second->inverseAreaChecking))
 						{
-							if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(a->second->position + a->second->positionOffset)) < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
+							if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || (player.position - (a->second->position + a->second->positionOffset)).squaredNorm() < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
 							{
 								core->getData()->discoveredActors.emplace(key, a->second);
 							}
@@ -654,7 +654,7 @@ void Streamer::discoverActors(Player &player, const std::vector<SharedCell> &cel
 							const int playerWorldId = *w == -1 ? -1 : player.worldId;
 							if (doesPlayerSatisfyConditions(a->second->players, player.playerId, a->second->interiors, player.interiorId, a->second->worlds, playerWorldId, a->second->areas, player.internalAreas, a->second->inverseAreaChecking))
 							{
-								if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(a->second->position + a->second->positionOffset)) < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
+								if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || (player.position - (a->second->position + a->second->positionOffset)).squaredNorm() < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
 								{
 									core->getData()->discoveredActors.emplace(key, a->second);
 								}
@@ -771,7 +771,7 @@ void Streamer::processCheckpoints(Player &player, const std::vector<SharedCell> 
 				}
 				else
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(d->second->position + d->second->positionOffset)));
+					distance = (player.position - (d->second->position + d->second->positionOffset)).squaredNorm();
 				}
 			}
 			if (distance < (d->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_CP]))
@@ -833,7 +833,7 @@ void Streamer::processMapIcons(Player &player, const std::vector<SharedCell> &ce
 				}
 				else
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(m->second->position + m->second->positionOffset)));
+					distance = (player.position - (m->second->position + m->second->positionOffset)).squaredNorm();
 				}
 			}
 			std::unordered_map<int, int>::iterator i = player.internalMapIcons.find(m->first);
@@ -936,11 +936,11 @@ void Streamer::processObjects(Player &player, const std::vector<SharedCell> &cel
 				{
 					if (o->second->attach)
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, o->second->attach->position)) + std::numeric_limits<float>::epsilon();
+						distance = (player.position - o->second->attach->position).squaredNorm() + std::numeric_limits<float>::epsilon();
 					}
 					else
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(o->second->position + o->second->positionOffset)));
+						distance = (player.position - (o->second->position + o->second->positionOffset)).squaredNorm();
 					}
 				}
 			}
@@ -1090,7 +1090,7 @@ void Streamer::discoverPickups(Player &player, const std::vector<SharedCell> &ce
 				{
 					if (doesPlayerSatisfyConditions(p->second->players, player.playerId, p->second->interiors, player.interiorId, p->second->worlds, -1, p->second->areas, player.internalAreas, p->second->inverseAreaChecking))
 					{
-						if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(p->second->position + p->second->positionOffset)) < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
+						if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || (player.position - (p->second->position + p->second->positionOffset)).squaredNorm() < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
 						{
 							core->getData()->discoveredPickups.emplace(key, p->second);
 						}
@@ -1113,7 +1113,7 @@ void Streamer::discoverPickups(Player &player, const std::vector<SharedCell> &ce
 						const int playerWorldId = *w == -1 ? -1 : player.worldId;
 						if (doesPlayerSatisfyConditions(p->second->players, player.playerId, p->second->interiors, player.interiorId, p->second->worlds, playerWorldId, p->second->areas, player.internalAreas, p->second->inverseAreaChecking))
 						{
-							if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(p->second->position + p->second->positionOffset)) < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
+							if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || (player.position - (p->second->position + p->second->positionOffset)).squaredNorm() < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
 							{
 								core->getData()->discoveredPickups.emplace(key, p->second);
 							}
@@ -1191,7 +1191,7 @@ void Streamer::processRaceCheckpoints(Player &player, const std::vector<SharedCe
 				}
 				else
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(r->second->position + r->second->positionOffset)));
+					distance = (player.position - (r->second->position + r->second->positionOffset)).squaredNorm();
 				}
 			}
 			if (distance < (r->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_RACE_CP]))
@@ -1254,11 +1254,11 @@ void Streamer::processTextLabels(Player &player, const std::vector<SharedCell> &
 				{
 					if (t->second->attach)
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, t->second->attach->position));
+						distance = (player.position - t->second->attach->position).squaredNorm();
 					}
 					else
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(player.position, Eigen::Vector3f(t->second->position + t->second->positionOffset)));
+						distance = (player.position - (t->second->position + t->second->positionOffset)).squaredNorm();
 					}
 				}
 			}
@@ -1413,6 +1413,8 @@ void Streamer::processMovingObjects()
 
 void Streamer::processAttachedAreas()
 {
+	bool occupiedVehiclesLoaded = false;
+	std::unordered_set<int> occupiedVehicles;
 	for (std::unordered_set<Item::SharedArea>::iterator a = attachedAreas.begin(); a != attachedAreas.end(); ++a)
 	{
 		if ((*a)->attach)
@@ -1460,21 +1462,21 @@ void Streamer::processAttachedAreas()
 			}
 			else if ((*a)->attach->vehicle != INVALID_VEHICLE_ID)
 			{
-				bool occupied = false;
-				for (std::unordered_map<int, Player>::iterator p = core->getData()->players.begin(); p != core->getData()->players.end(); ++p)
+				if (!occupiedVehiclesLoaded)
 				{
-					if (ompgdk::GetPlayerState(p->first) == PlayerState::PlayerState_Driver)
+					occupiedVehicles.reserve(core->getData()->players.size());
+					for (std::unordered_map<int, Player>::iterator p = core->getData()->players.begin(); p != core->getData()->players.end(); ++p)
 					{
-						if (ompgdk::GetPlayerVehicleID(p->first) == (*a)->attach->vehicle)
+						if (ompgdk::GetPlayerState(p->first) == PlayerState::PlayerState_Driver)
 						{
-							occupied = true;
-							break;
+							occupiedVehicles.insert(ompgdk::GetPlayerVehicleID(p->first));
 						}
 					}
+					occupiedVehiclesLoaded = true;
 				}
 				Eigen::Vector3f position = Eigen::Vector3f::Zero();
 				adjust = ompgdk::GetVehiclePos((*a)->attach->vehicle, &position[0], &position[1], &position[2]);
-				if (!occupied)
+				if (occupiedVehicles.find((*a)->attach->vehicle) == occupiedVehicles.end())
 				{
 					float heading = 0.0f;
 					ompgdk::GetVehicleZAngle((*a)->attach->vehicle, &heading);

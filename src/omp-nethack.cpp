@@ -26,10 +26,23 @@ static int GetObjectStreamerId(int playerid, int objectid)
     std::unordered_map<int, Player>::iterator p = core->getData()->players.find(playerid);
     if (p != core->getData()->players.end())
     {
+        static std::unordered_map<std::pair<int, int>, int, pair_hash> objectStreamerIds;
+        const std::pair<int, int> cacheKey = std::make_pair(playerid, objectid);
+        std::unordered_map<std::pair<int, int>, int, pair_hash>::iterator cached = objectStreamerIds.find(cacheKey);
+        if (cached != objectStreamerIds.end())
+        {
+            std::unordered_map<int, int>::iterator i = p->second.internalObjects.find(cached->second);
+            if (i != p->second.internalObjects.end() && i->second == objectid)
+            {
+                return cached->second;
+            }
+            objectStreamerIds.erase(cached);
+        }
         for (std::unordered_map<int, int>::iterator i = p->second.internalObjects.begin(); i != p->second.internalObjects.end(); ++i)
         {
             if (i->second == objectid)
             {
+                objectStreamerIds.emplace(cacheKey, i->first);
                 return i->first;
             }
         }

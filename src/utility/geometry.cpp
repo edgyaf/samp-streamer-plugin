@@ -23,18 +23,8 @@ using namespace Utility;
 
 bool Utility::doesLineSegmentIntersectArea(const Eigen::Vector3f &lineSegmentStart, const Eigen::Vector3f &lineSegmentEnd, const Item::SharedArea &area)
 {
-	Eigen::Vector2f height = Eigen::Vector2f::Zero();
-	std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> position;
-	if (area->attach)
-	{
-		height = area->height;
-		position = area->attach->position;
-	}
-	else
-	{
-		height = area->height;
-		position = area->position;
-	}
+	const Eigen::Vector2f &height = area->height;
+	const std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> &position = area->attach ? area->attach->position : area->position;
 	switch (area->type)
 	{
 		case STREAMER_AREA_TYPE_CIRCLE:
@@ -71,35 +61,25 @@ bool Utility::doesLineSegmentIntersectArea(const Eigen::Vector3f &lineSegmentSta
 
 bool Utility::isPointInArea(const Eigen::Vector3f &point, const Item::SharedArea &area)
 {
-	Eigen::Vector2f height = Eigen::Vector2f::Zero();
-	std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> position;
-	if (area->attach)
-	{
-		height = area->attach->height;
-		position = area->attach->position;
-	}
-	else
-	{
-		height = area->height;
-		position = area->position;
-	}
+	const Eigen::Vector2f &height = area->attach ? area->attach->height : area->height;
+	const std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> &position = area->attach ? area->attach->position : area->position;
 	switch (area->type)
 	{
 		case STREAMER_AREA_TYPE_CIRCLE:
 		{
-			return boost::geometry::comparable_distance(Eigen::Vector2f(point[0], point[1]), std::get<Eigen::Vector2f>(position)) < area->comparableSize;
+			return (Eigen::Vector2f(point[0], point[1]) - std::get<Eigen::Vector2f>(position)).squaredNorm() < area->comparableSize;
 		}
 		case STREAMER_AREA_TYPE_CYLINDER:
 		{
 			if ((almostEquals(point[2], height[0]) || (point[2] > height[0])) && (almostEquals(point[2], height[1]) || (point[2] < height[1])))
 			{
-				return boost::geometry::comparable_distance(Eigen::Vector2f(point[0], point[1]), std::get<Eigen::Vector2f>(position)) < area->comparableSize;
+				return (Eigen::Vector2f(point[0], point[1]) - std::get<Eigen::Vector2f>(position)).squaredNorm() < area->comparableSize;
 			}
 			return false;
 		}
 		case STREAMER_AREA_TYPE_SPHERE:
 		{
-			return boost::geometry::comparable_distance(point, std::get<Eigen::Vector3f>(position)) < area->comparableSize;
+			return (point - std::get<Eigen::Vector3f>(position)).squaredNorm() < area->comparableSize;
 		}
 		case STREAMER_AREA_TYPE_RECTANGLE:
 		{
@@ -166,6 +146,7 @@ void Utility::constructAttachedArea(const Item::SharedArea &area, const std::var
 			{
 				area->attach->height = Eigen::Vector2f(position[2] + area->height[0], position[2] + area->height[1]);
 				std::vector<Eigen::Vector2f> points;
+				points.reserve(std::get<Polygon2d>(area->position).outer().size());
 				for (std::vector<Eigen::Vector2f>::iterator p = std::get<Polygon2d>(area->position).outer().begin(); p != std::get<Polygon2d>(area->position).outer().end(); ++p)
 				{
 					points.push_back(Eigen::Vector2f(position[0], position[1]) + Eigen::Vector2f(p->data()[0], p->data()[1]));
@@ -202,15 +183,19 @@ void Utility::projectPoint(const Eigen::Vector3f &point, const std::variant<floa
 
 void Utility::projectPoint(const Eigen::Vector3f &point, const float &heading, Eigen::Vector3f &position)
 {
-	float angle = (std::atan2(point[0], point[1]) * (180.0f / (std::atan(1.0f) * 4.0f))) - heading, distance = std::sqrt((point[0] * point[0]) + (point[1] * point[1]));
-	position[0] += distance * std::sin(angle * ((std::atan(1.0f) * 4.0f) / 180.0f));
-	position[1] += distance * std::cos(angle * ((std::atan(1.0f) * 4.0f) / 180.0f));
+	const float pi = std::atan(1.0f) * 4.0f;
+	const float radiansToDegrees = 180.0f / pi;
+	const float degreesToRadians = pi / 180.0f;
+	float angle = (std::atan2(point[0], point[1]) * radiansToDegrees) - heading, distance = std::sqrt((point[0] * point[0]) + (point[1] * point[1]));
+	position[0] += distance * std::sin(angle * degreesToRadians);
+	position[1] += distance * std::cos(angle * degreesToRadians);
 	position[2] += point[2];
 }
 
 void Utility::projectPoint(const Eigen::Vector3f &point, const Eigen::Vector3f &rotation, Eigen::Vector3f &position)
 {
-	Eigen::Vector3f rotRad = rotation * ((std::atan(1.0f) * 4.0f) / 180.0f), rotCos(std::cos(rotRad[0]), std::cos(rotRad[1]), std::cos(rotRad[2])), rotSin(std::sin(rotRad[0]), std::sin(rotRad[1]), std::sin(rotRad[2]));
+	const float degreesToRadians = (std::atan(1.0f) * 4.0f) / 180.0f;
+	Eigen::Vector3f rotRad = rotation * degreesToRadians, rotCos(std::cos(rotRad[0]), std::cos(rotRad[1]), std::cos(rotRad[2])), rotSin(std::sin(rotRad[0]), std::sin(rotRad[1]), std::sin(rotRad[2]));
 	position[0] += (point[0] * rotCos[1] * rotCos[2]) - (point[0] * rotSin[0] * rotSin[1] * rotSin[2]) - (point[1] * rotCos[0] * rotSin[2]) + (point[2] * rotSin[1] * rotCos[2]) + (point[2] * rotSin[0] * rotCos[1] * rotSin[2]);
 	position[1] += (point[0] * rotCos[1] * rotSin[2]) + (point[0] * rotSin[0] * rotSin[1] * rotCos[2]) + (point[1] * rotCos[0] * rotCos[2]) + (point[2] * rotSin[1] * rotSin[2]) - (point[2] * rotSin[0] * rotCos[1] * rotCos[2]);
 	position[2] += -(point[0] * rotCos[0] * rotSin[1]) + (point[1] * rotSin[0]) + (point[2] * rotCos[0] * rotCos[1]);
