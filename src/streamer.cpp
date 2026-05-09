@@ -93,6 +93,12 @@ void Streamer::startAutomaticUpdate()
 		{
 			for (std::unordered_map<int, Player>::iterator p = core->getData()->players.begin(); p != core->getData()->players.end(); ++p)
 			{
+				const bool canDiscoverPickups = !core->getData()->pickups.empty() && p->second.enabledItems[STREAMER_TYPE_PICKUP];
+				const bool canDiscoverActors = !core->getData()->actors.empty() && p->second.enabledItems[STREAMER_TYPE_ACTOR];
+				if (!canDiscoverPickups && !canDiscoverActors)
+				{
+					continue;
+				}
 				std::vector<SharedCell> cells;
 				core->getGrid()->findMinimalCellsForPlayer(p->second, cells);
 
@@ -102,7 +108,7 @@ void Streamer::startAutomaticUpdate()
 					{
 						case STREAMER_TYPE_PICKUP:
 						{
-							if (!core->getData()->pickups.empty() && p->second.enabledItems[STREAMER_TYPE_PICKUP])
+							if (canDiscoverPickups)
 							{
 								discoverPickups(p->second, cells);
 							}
@@ -110,7 +116,7 @@ void Streamer::startAutomaticUpdate()
 						}
 						case STREAMER_TYPE_ACTOR:
 						{
-							if (!core->getData()->actors.empty() && p->second.enabledItems[STREAMER_TYPE_ACTOR])
+							if (canDiscoverActors)
 							{
 								discoverActors(p->second, cells);
 							}
@@ -617,28 +623,41 @@ void Streamer::discoverActors(Player &player, const std::vector<SharedCell> &cel
 		{
 			for (std::unordered_map<int, Item::SharedActor>::const_iterator a = (*c)->actors.begin(); a != (*c)->actors.end(); ++a)
 			{
-				std::unordered_set<int> worlds = a->second->worlds;
-				if (worlds.empty())
+				if (a->second->worlds.empty())
 				{
-					worlds.insert(-1);
-				}
-
-				for (std::unordered_set<int>::const_iterator w = worlds.begin(); w != worlds.end(); ++w)
-				{
-					if (player.worldId != *w && *w != -1)
-					{
-						continue;
-					}
-
-					std::unordered_map<std::pair<int, int>, Item::SharedActor, pair_hash>::iterator d = core->getData()->discoveredActors.find(std::make_pair(a->first, *w));
+					const std::pair<int, int> key = std::make_pair(a->first, -1);
+					std::unordered_map<std::pair<int, int>, Item::SharedActor, pair_hash>::iterator d = core->getData()->discoveredActors.find(key);
 					if (d == core->getData()->discoveredActors.end())
 					{
-						const int playerWorldId = *w == -1 ? -1 : player.worldId;
-						if (doesPlayerSatisfyConditions(a->second->players, player.playerId, a->second->interiors, player.interiorId, a->second->worlds, playerWorldId, a->second->areas, player.internalAreas, a->second->inverseAreaChecking))
+						if (doesPlayerSatisfyConditions(a->second->players, player.playerId, a->second->interiors, player.interiorId, a->second->worlds, -1, a->second->areas, player.internalAreas, a->second->inverseAreaChecking))
 						{
 							if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(a->second->position + a->second->positionOffset)) < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
 							{
-								core->getData()->discoveredActors.insert(std::make_pair(std::make_pair(a->first, *w), a->second));
+								core->getData()->discoveredActors.emplace(key, a->second);
+							}
+						}
+					}
+				}
+				else
+				{
+					for (std::unordered_set<int>::const_iterator w = a->second->worlds.begin(); w != a->second->worlds.end(); ++w)
+					{
+						if (player.worldId != *w && *w != -1)
+						{
+							continue;
+						}
+
+						const std::pair<int, int> key = std::make_pair(a->first, *w);
+						std::unordered_map<std::pair<int, int>, Item::SharedActor, pair_hash>::iterator d = core->getData()->discoveredActors.find(key);
+						if (d == core->getData()->discoveredActors.end())
+						{
+							const int playerWorldId = *w == -1 ? -1 : player.worldId;
+							if (doesPlayerSatisfyConditions(a->second->players, player.playerId, a->second->interiors, player.interiorId, a->second->worlds, playerWorldId, a->second->areas, player.internalAreas, a->second->inverseAreaChecking))
+							{
+								if (a->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(a->second->position + a->second->positionOffset)) < (a->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_ACTOR]))
+								{
+									core->getData()->discoveredActors.emplace(key, a->second);
+								}
 							}
 						}
 					}
@@ -1063,28 +1082,41 @@ void Streamer::discoverPickups(Player &player, const std::vector<SharedCell> &ce
 	{
 		for (std::unordered_map<int, Item::SharedPickup>::const_iterator p = (*c)->pickups.begin(); p != (*c)->pickups.end(); ++p)
 		{
-			std::unordered_set<int> worlds = p->second->worlds;
-			if (worlds.empty())
+			if (p->second->worlds.empty())
 			{
-				worlds.insert(-1);
-			}
-
-			for (std::unordered_set<int>::const_iterator w = worlds.begin(); w != worlds.end(); ++w)
-			{
-				if (player.worldId != *w && *w != -1)
-				{
-					continue;
-				}
-
-				std::unordered_map<std::pair<int, int>, Item::SharedPickup, pair_hash>::iterator d = core->getData()->discoveredPickups.find(std::make_pair(p->first, *w));
+				const std::pair<int, int> key = std::make_pair(p->first, -1);
+				std::unordered_map<std::pair<int, int>, Item::SharedPickup, pair_hash>::iterator d = core->getData()->discoveredPickups.find(key);
 				if (d == core->getData()->discoveredPickups.end())
 				{
-					const int playerWorldId = *w == -1 ? -1 : player.worldId;
-					if (doesPlayerSatisfyConditions(p->second->players, player.playerId, p->second->interiors, player.interiorId, p->second->worlds, playerWorldId, p->second->areas, player.internalAreas, p->second->inverseAreaChecking))
+					if (doesPlayerSatisfyConditions(p->second->players, player.playerId, p->second->interiors, player.interiorId, p->second->worlds, -1, p->second->areas, player.internalAreas, p->second->inverseAreaChecking))
 					{
 						if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(p->second->position + p->second->positionOffset)) < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
 						{
-							core->getData()->discoveredPickups.insert(std::make_pair(std::make_pair(p->first, *w), p->second));
+							core->getData()->discoveredPickups.emplace(key, p->second);
+						}
+					}
+				}
+			}
+			else
+			{
+				for (std::unordered_set<int>::const_iterator w = p->second->worlds.begin(); w != p->second->worlds.end(); ++w)
+				{
+					if (player.worldId != *w && *w != -1)
+					{
+						continue;
+					}
+
+					const std::pair<int, int> key = std::make_pair(p->first, *w);
+					std::unordered_map<std::pair<int, int>, Item::SharedPickup, pair_hash>::iterator d = core->getData()->discoveredPickups.find(key);
+					if (d == core->getData()->discoveredPickups.end())
+					{
+						const int playerWorldId = *w == -1 ? -1 : player.worldId;
+						if (doesPlayerSatisfyConditions(p->second->players, player.playerId, p->second->interiors, player.interiorId, p->second->worlds, playerWorldId, p->second->areas, player.internalAreas, p->second->inverseAreaChecking))
+						{
+							if (p->second->comparableStreamDistance < STREAMER_STATIC_DISTANCE_CUTOFF || boost::geometry::comparable_distance(player.position, Eigen::Vector3f(p->second->position + p->second->positionOffset)) < (p->second->comparableStreamDistance * player.radiusMultipliers[STREAMER_TYPE_PICKUP]))
+							{
+								core->getData()->discoveredPickups.emplace(key, p->second);
+							}
 						}
 					}
 				}

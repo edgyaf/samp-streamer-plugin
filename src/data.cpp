@@ -56,10 +56,7 @@ Data::Data()
 		STREAMER_TYPE_PICKUP,
 		STREAMER_TYPE_ACTOR
 	};
-	for (std::size_t i = 0; i < sizeof(defaultTypePriority) / sizeof(const int); ++i)
-	{
-		typePriority.push_back(defaultTypePriority[i]);
-	}
+	typePriority.assign(defaultTypePriority, defaultTypePriority + (sizeof(defaultTypePriority) / sizeof(defaultTypePriority[0])));
 }
 
 std::size_t Data::getGlobalChunkTickRate(int type)

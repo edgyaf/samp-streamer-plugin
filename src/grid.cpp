@@ -551,19 +551,16 @@ void Grid::removeTextLabel(const Item::SharedTextLabel &textLabel, bool reassign
 
 CellId Grid::getCellId(const Eigen::Vector2f &position, bool insert)
 {
-	static Box2d box;
-	box.min_corner()[0] = std::floor((position[0] / cellSize)) * cellSize;
-	box.min_corner()[1] = std::floor((position[1] / cellSize)) * cellSize;
-	box.max_corner()[0] = box.min_corner()[0] + cellSize;
-	box.max_corner()[1] = box.min_corner()[1] + cellSize;
-	Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(box);
-	CellId cellId = std::make_pair(static_cast<int>(centroid[0]), static_cast<int>(centroid[1]));
+	const float minX = std::floor(position[0] / cellSize) * cellSize;
+	const float minY = std::floor(position[1] / cellSize) * cellSize;
+	const float halfCellSize = cellSize * 0.5f;
+	CellId cellId = std::make_pair(static_cast<int>(minX + halfCellSize), static_cast<int>(minY + halfCellSize));
 	if (insert)
 	{
 		std::unordered_map<CellId, SharedCell, pair_hash>::iterator c = cells.find(cellId);
 		if (c == cells.end())
 		{
-			cells[cellId] = std::make_shared<Cell>(cellId);
+			cells.emplace(cellId, std::make_shared<Cell>(cellId));
 		}
 	}
 	return cellId;
@@ -580,7 +577,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (o->second->cell)
 			{
-				const auto& d = discoveredCells.find(o->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(o->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					o = player.visibleCell->objects.erase(o);
@@ -604,7 +601,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (c->second->cell)
 			{
-				const auto& d = discoveredCells.find(c->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(c->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					c = player.visibleCell->checkpoints.erase(c);
@@ -628,7 +625,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (r->second->cell)
 			{
-				const auto& d = discoveredCells.find(r->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(r->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					r = player.visibleCell->raceCheckpoints.erase(r);
@@ -652,7 +649,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (m->second->cell)
 			{
-				const auto& d = discoveredCells.find(m->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(m->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					m = player.visibleCell->mapIcons.erase(m);
@@ -676,7 +673,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (t->second->cell)
 			{
-				const auto& d = discoveredCells.find(t->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(t->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					t = player.visibleCell->textLabels.erase(t);
@@ -700,7 +697,7 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 		{
 			if (a->second->cell)
 			{
-				const auto& d = discoveredCells.find(a->second->cell->cellId);
+				std::unordered_set<CellId, pair_hash>::const_iterator d = discoveredCells.find(a->second->cell->cellId);
 				if (d != discoveredCells.end())
 				{
 					a = player.visibleCell->areas.erase(a);
@@ -721,7 +718,9 @@ void Grid::processDiscoveredCellsForPlayer(Player &player, std::vector<SharedCel
 
 void Grid::findAllCellsForPlayer(Player &player, std::vector<SharedCell> &playerCells)
 {
+	playerCells.reserve(playerCells.size() + 11);
 	std::unordered_set<CellId, pair_hash> discoveredCells;
+	discoveredCells.reserve(9);
 	for (int i = 0; i < translationMatrix.cols(); ++i)
 	{
 		Eigen::Vector2f position = Eigen::Vector2f(player.position[0], player.position[1]) + translationMatrix.col(i);
@@ -738,6 +737,7 @@ void Grid::findAllCellsForPlayer(Player &player, std::vector<SharedCell> &player
 
 void Grid::findMinimalCellsForPlayer(Player &player, std::vector<SharedCell> &playerCells)
 {
+	playerCells.reserve(playerCells.size() + 10);
 	for (int i = 0; i < translationMatrix.cols(); ++i)
 	{
 		Eigen::Vector2f position = Eigen::Vector2f(player.position[0], player.position[1]) + translationMatrix.col(i);
@@ -752,6 +752,7 @@ void Grid::findMinimalCellsForPlayer(Player &player, std::vector<SharedCell> &pl
 
 void Grid::findMinimalCellsForPoint(const Eigen::Vector2f &point, std::vector<SharedCell> &pointCells)
 {
+	pointCells.reserve(pointCells.size() + 10);
 	for (int i = 0; i < translationMatrix.cols(); ++i)
 	{
 		Eigen::Vector2f position = point + translationMatrix.col(i);
@@ -766,13 +767,41 @@ void Grid::findMinimalCellsForPoint(const Eigen::Vector2f &point, std::vector<Sh
 
 void Grid::findMinimalCellsForPoint(const Eigen::Vector2f &point, std::vector<SharedCell> &pointCells, float range)
 {
-	for (std::unordered_map<CellId, SharedCell, pair_hash>::iterator c = cells.begin(); c != cells.end(); ++c)
+	if (cellSize <= 0.0f)
 	{
-		Eigen::Vector2f corner(static_cast<float>(c->first.first) - (cellSize / 2.0f), static_cast<float>(c->first.second) - (cellSize / 2.0f));
-		Eigen::Vector2f delta(point[0] - std::max(corner[0], std::min(point[0], corner[0] + cellSize)), point[1] - std::max(corner[1], std::min(point[1], corner[1] + cellSize)));
-		if (((delta[0] * delta[0]) + (delta[1] * delta[1])) < range)
+		for (std::unordered_map<CellId, SharedCell, pair_hash>::iterator c = cells.begin(); c != cells.end(); ++c)
 		{
-			pointCells.push_back(c->second);
+			Eigen::Vector2f corner(static_cast<float>(c->first.first) - (cellSize / 2.0f), static_cast<float>(c->first.second) - (cellSize / 2.0f));
+			Eigen::Vector2f delta(point[0] - std::max(corner[0], std::min(point[0], corner[0] + cellSize)), point[1] - std::max(corner[1], std::min(point[1], corner[1] + cellSize)));
+			if (((delta[0] * delta[0]) + (delta[1] * delta[1])) < range)
+			{
+				pointCells.push_back(c->second);
+			}
+		}
+		pointCells.push_back(globalCell);
+		return;
+	}
+	const float radius = std::sqrt(range) + 1.0f;
+	const float halfCellSize = cellSize * 0.5f;
+	const float minX = std::floor((point[0] - radius) / cellSize) * cellSize;
+	const float maxX = std::floor((point[0] + radius) / cellSize) * cellSize;
+	const float minY = std::floor((point[1] - radius) / cellSize) * cellSize;
+	const float maxY = std::floor((point[1] + radius) / cellSize) * cellSize;
+	for (float x = minX; x <= maxX; x += cellSize)
+	{
+		for (float y = minY; y <= maxY; y += cellSize)
+		{
+			const CellId cellId = std::make_pair(static_cast<int>(x + halfCellSize), static_cast<int>(y + halfCellSize));
+			std::unordered_map<CellId, SharedCell, pair_hash>::iterator c = cells.find(cellId);
+			if (c != cells.end())
+			{
+				Eigen::Vector2f corner(static_cast<float>(cellId.first) - halfCellSize, static_cast<float>(cellId.second) - halfCellSize);
+				Eigen::Vector2f delta(point[0] - std::max(corner[0], std::min(point[0], corner[0] + cellSize)), point[1] - std::max(corner[1], std::min(point[1], corner[1] + cellSize)));
+				if (((delta[0] * delta[0]) + (delta[1] * delta[1])) < range)
+				{
+					pointCells.push_back(c->second);
+				}
+			}
 		}
 	}
 	pointCells.push_back(globalCell);

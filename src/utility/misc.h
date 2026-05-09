@@ -203,11 +203,24 @@ namespace Utility
 	template<typename T>
 	inline bool isContainerWithinContainer(const std::unordered_set<T> &mainContainer, const std::unordered_set<T> &overlappingContainer)
 	{
-		for (typename std::unordered_set<T>::const_iterator o = overlappingContainer.begin(); o != overlappingContainer.end(); ++o)
+		if (mainContainer.size() < overlappingContainer.size())
 		{
-			if (mainContainer.find(*o) != mainContainer.end())
+			for (typename std::unordered_set<T>::const_iterator m = mainContainer.begin(); m != mainContainer.end(); ++m)
 			{
-				return true;
+				if (overlappingContainer.find(*m) != overlappingContainer.end())
+				{
+					return true;
+				}
+			}
+		}
+		else
+		{
+			for (typename std::unordered_set<T>::const_iterator o = overlappingContainer.begin(); o != overlappingContainer.end(); ++o)
+			{
+				if (mainContainer.find(*o) != mainContainer.end())
+				{
+					return true;
+				}
 			}
 		}
 		return false;

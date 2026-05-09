@@ -403,14 +403,14 @@ void Utility::processPendingDestroyedActors()
 {
 	if (!core->getData()->destroyedActors.empty())
 	{
-		std::vector<int>::iterator a = core->getData()->destroyedActors.begin();
-		while (a != core->getData()->destroyedActors.end())
+		std::vector<int> destroyedActors;
+		std::swap(destroyedActors, core->getData()->destroyedActors);
+		for (std::vector<int>::const_iterator a = destroyedActors.begin(); a != destroyedActors.end(); ++a)
 		{
 			if (ompgdk::IsValidActor(*a))
 			{
 				ompgdk::DestroyActor(*a);
 			}
-			a = core->getData()->destroyedActors.erase(a);
 		}
 	}
 }
