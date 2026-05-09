@@ -392,9 +392,11 @@ cell AMX_NATIVE_CALL Natives::IsLineInDynamicArea(AMX *amx, cell *params)
 cell AMX_NATIVE_CALL Natives::IsLineInAnyDynamicArea(AMX *amx, cell *params)
 {
 	CHECK_PARAMS(6);
+	Eigen::Vector3f lineStart(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3]));
+	Eigen::Vector3f lineEnd(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6]));
 	for (std::unordered_map<int, Item::SharedArea>::const_iterator a = core->getData()->areas.begin(); a != core->getData()->areas.end(); ++a)
 	{
-		if (Utility::doesLineSegmentIntersectArea(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), Eigen::Vector3f(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6])), a->second))
+		if (Utility::doesLineSegmentIntersectArea(lineStart, lineEnd, a->second))
 		{
 			return 1;
 		}
@@ -408,60 +410,58 @@ cell AMX_NATIVE_CALL Natives::GetPlayerDynamicAreas(AMX *amx, cell *params)
 	std::unordered_map<int, Player>::iterator p = core->getData()->players.find(static_cast<int>(params[1]));
 	if (p != core->getData()->players.end())
 	{
-		std::multimap<float, int> orderedAreas;
+		const Eigen::Vector2f playerPosition2d(p->second.position[0], p->second.position[1]);
+		std::vector<std::pair<float, int> > orderedAreas;
 		for (std::unordered_set<int>::iterator i = p->second.internalAreas.begin(); i != p->second.internalAreas.end(); ++i)
 		{
 			std::unordered_map<int, Item::SharedArea>::iterator a = core->getData()->areas.find(*i);
 			if (a != core->getData()->areas.end())
 			{
-				std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> position;
-				if (a->second->attach)
-				{
-					position = a->second->position;
-				}
-				else
-				{
-					position = a->second->position;
-				}
+				const std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> &position = a->second->position;
 				float distance = 0.0f;
 				switch (a->second->type)
 				{
 					case STREAMER_AREA_TYPE_CIRCLE:
 					case STREAMER_AREA_TYPE_CYLINDER:
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(p->second.position[0], p->second.position[1]), std::get<Eigen::Vector2f>(position)));
+						distance = (playerPosition2d - std::get<Eigen::Vector2f>(position)).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_SPHERE:
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(p->second.position, std::get<Eigen::Vector3f>(position)));
+						distance = (p->second.position - std::get<Eigen::Vector3f>(position)).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_RECTANGLE:
 					{
 						Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Box2d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(p->second.position[0], p->second.position[1]), centroid));
+						distance = (playerPosition2d - centroid).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_CUBOID:
 					{
 						Eigen::Vector3f centroid = boost::geometry::return_centroid<Eigen::Vector3f>(std::get<Box3d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(p->second.position, centroid));
+						distance = (p->second.position - centroid).squaredNorm();
 						break;
 					
 					}
 					case STREAMER_AREA_TYPE_POLYGON:
 					{
 						Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Polygon2d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(p->second.position[0], p->second.position[1]), centroid));
+						distance = (playerPosition2d - centroid).squaredNorm();
 						break;
 					}
 				}
-				orderedAreas.insert(std::pair<float, int>(distance, a->first));
+				orderedAreas.push_back(std::make_pair(distance, a->first));
 			}
 		}
 		std::vector<int> finalAreas;
-		for (std::map<float, int>::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
+		finalAreas.reserve(orderedAreas.size());
+		std::stable_sort(orderedAreas.begin(), orderedAreas.end(), [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+		{
+			return a.first < b.first;
+		});
+		for (std::vector<std::pair<float, int> >::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
 		{
 			finalAreas.push_back(i->second);
 		}
@@ -485,64 +485,63 @@ cell AMX_NATIVE_CALL Natives::GetPlayerNumberDynamicAreas(AMX *amx, cell *params
 cell AMX_NATIVE_CALL Natives::GetDynamicAreasForPoint(AMX *amx, cell *params)
 {
 	CHECK_PARAMS(5);
-	std::multimap<float, int> orderedAreas;
+	const Eigen::Vector2f position2d(amx_ctof(params[1]), amx_ctof(params[2]));
+	const Eigen::Vector3f position3d(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3]));
+	std::vector<std::pair<float, int> > orderedAreas;
 	std::vector<SharedCell> pointCells;
-	core->getGrid()->findMinimalCellsForPoint(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), pointCells);
+	core->getGrid()->findMinimalCellsForPoint(position2d, pointCells);
 	for (std::vector<SharedCell>::const_iterator p = pointCells.begin(); p != pointCells.end(); ++p)
 	{
 		for (std::unordered_map<int, Item::SharedArea>::const_iterator a = (*p)->areas.begin(); a != (*p)->areas.end(); ++a)
 		{
-			if (Utility::isPointInArea(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), a->second))
+			if (Utility::isPointInArea(position3d, a->second))
 			{
-				std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> position;
-				if (a->second->attach)
-				{
-					position = a->second->position;
-				}
-				else
-				{
-					position = a->second->position;
-				}
+				const std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> &position = a->second->position;
 				float distance = 0.0f;
 				switch (a->second->type)
 				{
 					case STREAMER_AREA_TYPE_CIRCLE:
 					case STREAMER_AREA_TYPE_CYLINDER:
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), std::get<Eigen::Vector2f>(position)));
+						distance = (position2d - std::get<Eigen::Vector2f>(position)).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_SPHERE:
 					{
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), std::get<Eigen::Vector3f>(position)));
+						distance = (position3d - std::get<Eigen::Vector3f>(position)).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_RECTANGLE:
 					{
 						Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Box2d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), centroid));
+						distance = (position2d - centroid).squaredNorm();
 						break;
 					}
 					case STREAMER_AREA_TYPE_CUBOID:
 					{
 						Eigen::Vector3f centroid = boost::geometry::return_centroid<Eigen::Vector3f>(std::get<Box3d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), centroid));
+						distance = (position3d - centroid).squaredNorm();
 						break;
 
 					}
 					case STREAMER_AREA_TYPE_POLYGON:
 					{
 						Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Polygon2d>(position));
-						distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), centroid));
+						distance = (position2d - centroid).squaredNorm();
 						break;
 					}
 				}
-				orderedAreas.insert(std::pair<float, int>(distance, a->first));
+				orderedAreas.push_back(std::make_pair(distance, a->first));
 			}
 		}
 	}
 	std::vector<int> finalAreas;
-	for (std::map<float, int>::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
+	finalAreas.reserve(orderedAreas.size());
+	std::stable_sort(orderedAreas.begin(), orderedAreas.end(), [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+	{
+		return a.first < b.first;
+	});
+	for (std::vector<std::pair<float, int> >::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
 	{
 		finalAreas.push_back(i->second);
 	}
@@ -554,13 +553,15 @@ cell AMX_NATIVE_CALL Natives::GetNumberDynamicAreasForPoint(AMX *amx, cell *para
 {
 	CHECK_PARAMS(3);
 	int areaCount = 0;
+	const Eigen::Vector2f position2d(amx_ctof(params[1]), amx_ctof(params[2]));
+	const Eigen::Vector3f position3d(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3]));
 	std::vector<SharedCell> pointCells;
-	core->getGrid()->findMinimalCellsForPoint(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), pointCells);
+	core->getGrid()->findMinimalCellsForPoint(position2d, pointCells);
 	for (std::vector<SharedCell>::const_iterator p = pointCells.begin(); p != pointCells.end(); ++p)
 	{
 		for (std::unordered_map<int, Item::SharedArea>::const_iterator a = (*p)->areas.begin(); a != (*p)->areas.end(); ++a)
 		{
-			if (Utility::isPointInArea(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), a->second))
+			if (Utility::isPointInArea(position3d, a->second))
 			{
 				++areaCount;
 			}
@@ -572,59 +573,59 @@ cell AMX_NATIVE_CALL Natives::GetNumberDynamicAreasForPoint(AMX *amx, cell *para
 cell AMX_NATIVE_CALL Natives::GetDynamicAreasForLine(AMX *amx, cell *params)
 {
 	CHECK_PARAMS(8);
-	std::multimap<float, int> orderedAreas;
+	const Eigen::Vector2f lineStart2d(amx_ctof(params[1]), amx_ctof(params[2]));
+	const Eigen::Vector3f lineStart(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3]));
+	const Eigen::Vector3f lineEnd(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6]));
+	std::vector<std::pair<float, int> > orderedAreas;
 	for (std::unordered_map<int, Item::SharedArea>::const_iterator a = core->getData()->areas.begin(); a != core->getData()->areas.end(); ++a)
 	{
-		if (Utility::doesLineSegmentIntersectArea(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), Eigen::Vector3f(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6])), a->second))
+		if (Utility::doesLineSegmentIntersectArea(lineStart, lineEnd, a->second))
 		{
-			std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> position;
-			if (a->second->attach)
-			{
-				position = a->second->position;
-			}
-			else
-			{
-				position = a->second->position;
-			}
+			const std::variant<Polygon2d, Box2d, Box3d, Eigen::Vector2f, Eigen::Vector3f> &position = a->second->position;
 			float distance = 0.0f;
 			switch (a->second->type)
 			{
 				case STREAMER_AREA_TYPE_CIRCLE:
 				case STREAMER_AREA_TYPE_CYLINDER:
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), std::get<Eigen::Vector2f>(position)));
+					distance = (lineStart2d - std::get<Eigen::Vector2f>(position)).squaredNorm();
 					break;
 				}
 				case STREAMER_AREA_TYPE_SPHERE:
 				{
-					distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), std::get<Eigen::Vector3f>(position)));
+					distance = (lineStart - std::get<Eigen::Vector3f>(position)).squaredNorm();
 					break;
 				}
 				case STREAMER_AREA_TYPE_RECTANGLE:
 				{
 					Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Box2d>(position));
-					distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), centroid));
+					distance = (lineStart2d - centroid).squaredNorm();
 					break;
 				}
 				case STREAMER_AREA_TYPE_CUBOID:
 				{
 					Eigen::Vector3f centroid = boost::geometry::return_centroid<Eigen::Vector3f>(std::get<Box3d>(position));
-					distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), centroid));
+					distance = (lineStart - centroid).squaredNorm();
 					break;
 
 				}
 				case STREAMER_AREA_TYPE_POLYGON:
 				{
 					Eigen::Vector2f centroid = boost::geometry::return_centroid<Eigen::Vector2f>(std::get<Polygon2d>(position));
-					distance = static_cast<float>(boost::geometry::comparable_distance(Eigen::Vector2f(amx_ctof(params[1]), amx_ctof(params[2])), centroid));
+					distance = (lineStart2d - centroid).squaredNorm();
 					break;
 				}
 			}
-			orderedAreas.insert(std::pair<float, int>(distance, a->first));
+			orderedAreas.push_back(std::make_pair(distance, a->first));
 		}
 	}
 	std::vector<int> finalAreas;
-	for (std::map<float, int>::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
+	finalAreas.reserve(orderedAreas.size());
+	std::stable_sort(orderedAreas.begin(), orderedAreas.end(), [](const std::pair<float, int> &a, const std::pair<float, int> &b)
+	{
+		return a.first < b.first;
+	});
+	for (std::vector<std::pair<float, int> >::iterator i = orderedAreas.begin(); i != orderedAreas.end(); ++i)
 	{
 		finalAreas.push_back(i->second);
 	}
@@ -636,9 +637,11 @@ cell AMX_NATIVE_CALL Natives::GetNumberDynamicAreasForLine(AMX *amx, cell *param
 {
 	CHECK_PARAMS(6);
 	int areaCount = 0;
+	Eigen::Vector3f lineStart(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3]));
+	Eigen::Vector3f lineEnd(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6]));
 	for (std::unordered_map<int, Item::SharedArea>::const_iterator a = core->getData()->areas.begin(); a != core->getData()->areas.end(); ++a)
 	{
-		if (Utility::doesLineSegmentIntersectArea(Eigen::Vector3f(amx_ctof(params[1]), amx_ctof(params[2]), amx_ctof(params[3])), Eigen::Vector3f(amx_ctof(params[4]), amx_ctof(params[5]), amx_ctof(params[6])), a->second))
+		if (Utility::doesLineSegmentIntersectArea(lineStart, lineEnd, a->second))
 		{
 			++areaCount;
 		}
