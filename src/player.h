@@ -19,8 +19,7 @@
 
 #include "cell.h"
 #include "identifier.h"
-
-#include <deque>
+#include "network-pacer.h"
 
 struct Player
 {
@@ -93,11 +92,12 @@ struct Player
 		internalObjectsReverse.insert(std::make_pair(newInternalId, i->first));
 	}
 
-	std::deque<std::pair<int, int>> pendingMaterials;
-	float networkPacketLoss = 0.0f;
-	unsigned networkPrevBytesSent = 0;
-	unsigned networkPrevBytesResent = 0;
-	int networkThrottleTier = 0;
+	inline std::size_t countPendingChunkItems() const
+	{
+		return discoveredMapIcons.size() + discoveredObjects.size() + discoveredTextLabels.size() + removedMapIcons.size() + removedObjects.size() + removedTextLabels.size();
+	}
+
+	NetworkBudget networkBudget;
 
 	std::unordered_set<int> removedMapIcons;
 	std::unordered_set<int> removedObjects;

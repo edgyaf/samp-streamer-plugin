@@ -66,30 +66,6 @@ cell AMX_NATIVE_CALL Natives::Streamer_IsToggleChunkStream(AMX *amx, cell *param
 	return static_cast<cell>(core->getChunkStreamer()->getChunkStreamingEnabled());
 }
 
-cell AMX_NATIVE_CALL Natives::Streamer_ToggleNetworkThrottle(AMX *amx, cell *params)
-{
-	CHECK_PARAMS(1);
-	core->getChunkStreamer()->setThrottleEnabled(static_cast<int>(params[1]) != 0);
-	return 1;
-}
-
-cell AMX_NATIVE_CALL Natives::Streamer_IsToggleNetworkThrottle(AMX *amx, cell *params)
-{
-	return static_cast<cell>(core->getChunkStreamer()->getThrottleEnabled());
-}
-
-cell AMX_NATIVE_CALL Natives::Streamer_ToggleNetworkThrottleDebug(AMX *amx, cell *params)
-{
-	CHECK_PARAMS(1);
-	core->getChunkStreamer()->setThrottleDebugEnabled(static_cast<int>(params[1]) != 0);
-	return 1;
-}
-
-cell AMX_NATIVE_CALL Natives::Streamer_IsToggleNetworkThrottleDebug(AMX *amx, cell *params)
-{
-	return static_cast<cell>(core->getChunkStreamer()->getThrottleDebugEnabled());
-}
-
 cell AMX_NATIVE_CALL Natives::Streamer_GetChunkTickRate(AMX *amx, cell *params)
 {
 	CHECK_PARAMS(2);

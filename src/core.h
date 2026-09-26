@@ -20,6 +20,8 @@
 #include "chunk-streamer.h"
 #include "data.h"
 #include "grid.h"
+#include "network-pacer.h"
+#include "object-material-inline.h"
 #include "streamer.h"
 
 class Core
@@ -47,6 +49,16 @@ public:
 		return streamer.get();
 	}
 
+	inline NetworkPacer *getNetworkPacer()
+	{
+		return networkPacer.get();
+	}
+
+	inline ObjectMaterialInliner *getMaterialInliner()
+	{
+		return materialInliner.get();
+	}
+
 	inline IPlayerPool *getPlayers()
 	{
 		return players;
@@ -72,6 +84,9 @@ private:
 
 	std::unique_ptr<ChunkStreamer> chunkStreamer;
 	std::unique_ptr<Streamer> streamer;
+
+	std::unique_ptr<NetworkPacer> networkPacer;
+	std::unique_ptr<ObjectMaterialInliner> materialInliner;
 
 	IPlayerPool *players = nullptr;
 	ICore *ompCore = nullptr;

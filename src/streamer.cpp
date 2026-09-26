@@ -59,6 +59,23 @@ void Streamer::startAutomaticUpdate()
 			bool updatedActiveItems = false;
 			for (std::unordered_map<int, Player>::iterator p = core->getData()->players.begin(); p != core->getData()->players.end(); ++p)
 			{
+				if (++p->second.tickCount >= p->second.tickRate)
+				{
+					if (!updatedActiveItems)
+					{
+						processActiveItems();
+						updatedActiveItems = true;
+					}
+					if (!p->second.delayedUpdate)
+					{
+						performPlayerUpdate(p->second, true);
+					}
+					else
+					{
+						startManualUpdate(p->second, p->second.delayedUpdateType);
+					}
+					p->second.tickCount = 0;
+				}
 				if (core->getChunkStreamer()->getChunkStreamingEnabled() && p->second.processingChunks.any())
 				{
 					if (!updatedActiveItems)
@@ -66,32 +83,7 @@ void Streamer::startAutomaticUpdate()
 						processActiveItems();
 						updatedActiveItems = true;
 					}
-					++p->second.tickCount;
 					core->getChunkStreamer()->performPlayerChunkUpdate(p->second, true);
-				}
-				else
-				{
-					if (++p->second.tickCount >= p->second.tickRate)
-					{
-						if (!updatedActiveItems)
-						{
-							processActiveItems();
-							updatedActiveItems = true;
-						}
-						if (!p->second.delayedUpdate)
-						{
-							performPlayerUpdate(p->second, true);
-						}
-						else
-						{
-							startManualUpdate(p->second, p->second.delayedUpdateType);
-						}
-						p->second.tickCount = 0;
-					}
-					if (core->getChunkStreamer()->getChunkStreamingEnabled() && !p->second.pendingMaterials.empty())
-					{
-						core->getChunkStreamer()->performPlayerChunkUpdate(p->second, true);
-					}
 				}
 			}
 		}
@@ -171,45 +163,8 @@ void Streamer::startManualUpdate(Player &player, int type)
 	}
 	if (type >= 0 && type < STREAMER_MAX_TYPES)
 	{
-		if (core->getChunkStreamer()->getChunkStreamingEnabled())
-		{
-			switch (type)
-			{
-				case STREAMER_TYPE_OBJECT:
-				{
-					player.discoveredObjects.clear();
-					player.existingObjects.clear();
-					player.processingChunks.reset(STREAMER_TYPE_OBJECT);
-					break;
-				}
-				case STREAMER_TYPE_MAP_ICON:
-				{
-					player.discoveredMapIcons.clear();
-					player.existingMapIcons.clear();
-					player.processingChunks.reset(STREAMER_TYPE_MAP_ICON);
-					break;
-				}
-				case STREAMER_TYPE_3D_TEXT_LABEL:
-				{
-					player.discoveredTextLabels.clear();
-					player.existingTextLabels.clear();
-					player.processingChunks.reset(STREAMER_TYPE_3D_TEXT_LABEL);
-					break;
-				}
-			}
-		}
 		player.enabledItems.reset();
 		player.enabledItems.set(type);
-	}
-	else if (core->getChunkStreamer()->getChunkStreamingEnabled())
-	{
-		player.discoveredMapIcons.clear();
-		player.discoveredObjects.clear();
-		player.discoveredTextLabels.clear();
-		player.existingMapIcons.clear();
-		player.existingObjects.clear();
-		player.existingTextLabels.clear();
-		player.processingChunks.reset();
 	}
 	processActiveItems();
 	performPlayerUpdate(player, false);
@@ -226,34 +181,6 @@ void Streamer::performPlayerUpdate(Player &player, bool automatic)
 	bool update = true;
 	if (automatic)
 	{
-		if (core->getChunkStreamer()->getChunkStreamingEnabled() && core->getPlayers())
-		{
-			IPlayer *omplayer = core->getPlayers()->get(player.playerId);
-			if (omplayer)
-			{
-				const PeerNetworkData &netData = omplayer->getNetworkData();
-				if (netData.network)
-				{
-					NetworkStats ns = netData.network->getStatistics(omplayer);
-					unsigned deltaSent = ns.totalBytesSent - player.networkPrevBytesSent;
-					unsigned deltaResent = ns.messagesTotalBytesResent - player.networkPrevBytesResent;
-					float instantLoss = deltaSent > 0 ? 100.0f * deltaResent / deltaSent : 0.0f;
-					player.networkPacketLoss = 0.25f * instantLoss + 0.75f * player.networkPacketLoss;
-					player.networkPrevBytesSent = ns.totalBytesSent;
-					player.networkPrevBytesResent = ns.messagesTotalBytesResent;
-					int tier = player.networkPacketLoss >= ChunkStreamer::THROTTLE_TIER3 ? 3 : player.networkPacketLoss >= ChunkStreamer::THROTTLE_TIER2 ? 2 : player.networkPacketLoss >= ChunkStreamer::THROTTLE_TIER1 ? 1 : 0;
-					if (tier != player.networkThrottleTier)
-					{
-						player.networkThrottleTier = tier;
-						if (core->getChunkStreamer()->getThrottleDebugEnabled() && core->getOmpCore())
-						{
-							static const char *tierNames[] = { "none", "3/4 (2%+)", "1/2 (5%+)", "1/4 (10%+)" };
-							core->getOmpCore()->printLn("[Streamer] Player %d throttle: %s (loss=%.1f%%)", player.playerId, tierNames[tier], player.networkPacketLoss);
-						}
-					}
-				}
-			}
-		}
 		player.interiorId = ompgdk::GetPlayerInterior(player.playerId);
 		player.worldId = ompgdk::GetPlayerVirtualWorld(player.playerId);
 		if (!player.updateUsingCameraPosition)

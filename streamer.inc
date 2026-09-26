@@ -188,10 +188,6 @@ native Streamer_GetPlayerTickRate(playerid);
 native Streamer_SetPlayerTickRate(playerid, rate);
 native Streamer_ToggleChunkStream(toggle);
 native Streamer_IsToggleChunkStream();
-native Streamer_ToggleNetworkThrottle(toggle);
-native Streamer_IsToggleNetworkThrottle();
-native Streamer_ToggleNetworkThrottleDebug(toggle);
-native Streamer_IsToggleNetworkThrottleDebug();
 native Streamer_GetChunkTickRate(type, playerid = -1);
 native Streamer_SetChunkTickRate(type, rate, playerid = -1);
 native Streamer_GetChunkSize(type);
@@ -233,6 +229,22 @@ native Streamer_GetLastUpdateTime(&Float:time);
 native Streamer_Update(playerid, type = -1);
 native Streamer_UpdateEx(playerid, Float:x, Float:y, Float:z, worldid = -1, interiorid = -1, type = -1, compensatedtime = -1, freezeplayer = 1);
 native Streamer_QueueObjectDiscovery(playerid, Float:x, Float:y, Float:z, worldid = -1, interiorid = -1);
+
+// Natives (Network)
+
+native Streamer_ToggleNetworkThrottle(toggle);
+native Streamer_IsToggleNetworkThrottle();
+native Streamer_ToggleNetworkThrottleDebug(toggle);
+native Streamer_IsToggleNetworkThrottleDebug();
+native Streamer_GetNetworkQueueTime();
+native Streamer_SetNetworkQueueTime(milliseconds);
+native Streamer_GetClientWorkRate(&Float:rate, &Float:burst);
+native Streamer_SetClientWorkRate(Float:rate, Float:burst = 50.0);
+native Streamer_GetInstantStreamRadius(&Float:radius);
+native Streamer_SetInstantStreamRadius(Float:radius);
+native Streamer_GetPlayerNetworkStats(playerid, &pendingitems, &queuedmessages, &resendmessages, &Float:kbps);
+native Streamer_ToggleInlineMaterials(toggle);
+native Streamer_IsToggleInlineMaterials();
 
 // Natives (Data Manipulation)
 

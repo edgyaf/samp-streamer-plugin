@@ -26,4 +26,6 @@ Core::Core()
 	grid.reset(new Grid);
 	chunkStreamer.reset(new ChunkStreamer);
 	streamer.reset(new Streamer);
+	networkPacer.reset(new NetworkPacer);
+	materialInliner.reset(new ObjectMaterialInliner);
 }

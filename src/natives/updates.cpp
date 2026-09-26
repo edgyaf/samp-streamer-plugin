@@ -189,8 +189,6 @@ cell AMX_NATIVE_CALL Natives::Streamer_QueueObjectDiscovery(AMX *amx, cell *para
 		p->second.position = Eigen::Vector3f(amx_ctof(params[2]), amx_ctof(params[3]), amx_ctof(params[4]));
 		p->second.worldId = static_cast<int>(params[5]) >= 0 ? static_cast<int>(params[5]) : ompgdk::GetPlayerVirtualWorld(p->first);
 		p->second.interiorId = static_cast<int>(params[6]) >= 0 ? static_cast<int>(params[6]) : ompgdk::GetPlayerInterior(p->first);
-		p->second.discoveredObjects.clear();
-		p->second.existingObjects.clear();
 		p->second.removedObjects.clear();
 		p->second.processingChunks.reset(STREAMER_TYPE_OBJECT);
 		core->getStreamer()->processActiveItems();

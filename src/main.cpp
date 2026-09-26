@@ -35,10 +35,6 @@ AMX_NATIVE_INFO natives[] =
 	{ "Streamer_SetPlayerTickRate", Natives::Streamer_SetPlayerTickRate },
 	{ "Streamer_ToggleChunkStream", Natives::Streamer_ToggleChunkStream },
 	{ "Streamer_IsToggleChunkStream", Natives::Streamer_IsToggleChunkStream },
-	{ "Streamer_ToggleNetworkThrottle", Natives::Streamer_ToggleNetworkThrottle },
-	{ "Streamer_IsToggleNetworkThrottle", Natives::Streamer_IsToggleNetworkThrottle },
-	{ "Streamer_ToggleNetworkThrottleDebug", Natives::Streamer_ToggleNetworkThrottleDebug },
-	{ "Streamer_IsToggleNetworkThrottleDebug", Natives::Streamer_IsToggleNetworkThrottleDebug },
 	{ "Streamer_GetChunkTickRate", Natives::Streamer_GetChunkTickRate },
 	{ "Streamer_SetChunkTickRate", Natives::Streamer_SetChunkTickRate },
 	{ "Streamer_GetChunkSize", Natives::Streamer_GetChunkSize },
@@ -78,6 +74,20 @@ AMX_NATIVE_INFO natives[] =
 	{ "Streamer_Update", Natives::Streamer_Update },
 	{ "Streamer_UpdateEx", Natives::Streamer_UpdateEx },
 	{ "Streamer_QueueObjectDiscovery", Natives::Streamer_QueueObjectDiscovery },
+	// Network
+	{ "Streamer_ToggleNetworkThrottle", Natives::Streamer_ToggleNetworkThrottle },
+	{ "Streamer_IsToggleNetworkThrottle", Natives::Streamer_IsToggleNetworkThrottle },
+	{ "Streamer_ToggleNetworkThrottleDebug", Natives::Streamer_ToggleNetworkThrottleDebug },
+	{ "Streamer_IsToggleNetworkThrottleDebug", Natives::Streamer_IsToggleNetworkThrottleDebug },
+	{ "Streamer_GetNetworkQueueTime", Natives::Streamer_GetNetworkQueueTime },
+	{ "Streamer_SetNetworkQueueTime", Natives::Streamer_SetNetworkQueueTime },
+	{ "Streamer_GetClientWorkRate", Natives::Streamer_GetClientWorkRate },
+	{ "Streamer_SetClientWorkRate", Natives::Streamer_SetClientWorkRate },
+	{ "Streamer_GetInstantStreamRadius", Natives::Streamer_GetInstantStreamRadius },
+	{ "Streamer_SetInstantStreamRadius", Natives::Streamer_SetInstantStreamRadius },
+	{ "Streamer_GetPlayerNetworkStats", Natives::Streamer_GetPlayerNetworkStats },
+	{ "Streamer_ToggleInlineMaterials", Natives::Streamer_ToggleInlineMaterials },
+	{ "Streamer_IsToggleInlineMaterials", Natives::Streamer_IsToggleInlineMaterials },
 	// Data Manipulation
 	{ "Streamer_GetFloatData", Natives::Streamer_GetFloatData },
 	{ "Streamer_SetFloatData", Natives::Streamer_SetFloatData },
@@ -313,6 +323,7 @@ class OmpStreamerComponent final : public IComponent, public CoreEventHandler, p
 		// add event handlers
 		for (auto network : omp_core->getNetworks()) {
 			network->getPerPacketOutEventDispatcher().addEventHandler(this, 207);
+			materialInlineHooks.registerOn(network);
 		}
 		pawnComponent->getEventDispatcher().addEventHandler(this);
 		omp_core->getEventDispatcher().addEventHandler(this);
@@ -388,6 +399,7 @@ private:
 	IPlayerPool* players = nullptr;
 	IPawnComponent* pawnComponent = nullptr;
 	EventHandler streamerEventHandler;
+	ObjectMaterialInlineHooks materialInlineHooks;
 };
 
 COMPONENT_ENTRY_POINT() {

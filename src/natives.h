@@ -35,10 +35,6 @@ namespace Natives
 	cell AMX_NATIVE_CALL Streamer_SetPlayerTickRate(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_ToggleChunkStream(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_IsToggleChunkStream(AMX *amx, cell *params);
-	cell AMX_NATIVE_CALL Streamer_ToggleNetworkThrottle(AMX *amx, cell *params);
-	cell AMX_NATIVE_CALL Streamer_IsToggleNetworkThrottle(AMX *amx, cell *params);
-	cell AMX_NATIVE_CALL Streamer_ToggleNetworkThrottleDebug(AMX *amx, cell *params);
-	cell AMX_NATIVE_CALL Streamer_IsToggleNetworkThrottleDebug(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_GetChunkTickRate(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_SetChunkTickRate(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_GetChunkSize(AMX *amx, cell *params);
@@ -78,6 +74,20 @@ namespace Natives
 	cell AMX_NATIVE_CALL Streamer_Update(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_UpdateEx(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_QueueObjectDiscovery(AMX *amx, cell *params);
+	// Network
+	cell AMX_NATIVE_CALL Streamer_ToggleNetworkThrottle(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_IsToggleNetworkThrottle(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_ToggleNetworkThrottleDebug(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_IsToggleNetworkThrottleDebug(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_GetNetworkQueueTime(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_SetNetworkQueueTime(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_GetClientWorkRate(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_SetClientWorkRate(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_GetInstantStreamRadius(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_SetInstantStreamRadius(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_GetPlayerNetworkStats(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_ToggleInlineMaterials(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_IsToggleInlineMaterials(AMX *amx, cell *params);
 	// Data Manipulation
 	cell AMX_NATIVE_CALL Streamer_GetFloatData(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_SetFloatData(AMX *amx, cell *params);

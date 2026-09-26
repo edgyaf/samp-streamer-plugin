@@ -26,8 +26,6 @@ ChunkStreamer::ChunkStreamer()
 	chunkSize[STREAMER_TYPE_3D_TEXT_LABEL] = 100;
 	materialChunkSize = 200;
 	chunkStreamingEnabled = false;
-	throttleEnabled = true;
-	throttleDebugEnabled = false;
 }
 
 std::size_t ChunkStreamer::getChunkSize(int type)
@@ -78,6 +76,10 @@ bool ChunkStreamer::setChunkSize(int type, std::size_t value)
 
 void ChunkStreamer::performPlayerChunkUpdate(Player &player, bool automatic)
 {
+	if (automatic && core->getNetworkPacer()->getEnabled())
+	{
+		core->getNetworkPacer()->refill(player);
+	}
 	for (std::vector<int>::const_iterator t = core->getData()->typePriority.begin(); t != core->getData()->typePriority.end(); ++t)
 	{
 		switch (*t)
@@ -108,14 +110,12 @@ void ChunkStreamer::performPlayerChunkUpdate(Player &player, bool automatic)
 			}
 		}
 	}
-	if (!player.pendingMaterials.empty())
-	{
-		streamMaterials(player, automatic);
-	}
 }
 
 void ChunkStreamer::discoverMapIcons(Player &player, const std::vector<SharedCell> &cells)
 {
+	player.discoveredMapIcons.clear();
+	player.existingMapIcons.clear();
 	for (std::vector<SharedCell>::const_iterator c = cells.begin(); c != cells.end(); ++c)
 	{
 		for (std::unordered_map<int, Item::SharedMapIcon>::const_iterator m = (*c)->mapIcons.begin(); m != (*c)->mapIcons.end(); ++m)
@@ -141,6 +141,7 @@ void ChunkStreamer::discoverMapIcons(Player &player, const std::vector<SharedCel
 				}
 				else
 				{
+					player.removedMapIcons.erase(m->first);
 					if (m->second->cell)
 					{
 						player.visibleCell->mapIcons.insert(*m);
@@ -165,16 +166,16 @@ void ChunkStreamer::discoverMapIcons(Player &player, const std::vector<SharedCel
 
 void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 {
+	NetworkPacer *pacer = core->getNetworkPacer();
 	if (!automatic || ++player.chunkTickCount[STREAMER_TYPE_MAP_ICON] >= player.chunkTickRate[STREAMER_TYPE_MAP_ICON])
 	{
-		std::size_t effectiveChunkSize = automatic ? throttledSize(chunkSize[STREAMER_TYPE_MAP_ICON], player.networkPacketLoss) : chunkSize[STREAMER_TYPE_MAP_ICON];
 		std::size_t chunkCount = 0;
 		if (!player.removedMapIcons.empty())
 		{
 			std::unordered_set<int>::iterator r = player.removedMapIcons.begin();
 			while (r != player.removedMapIcons.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_MAP_ICON]))
 				{
 					break;
 				}
@@ -182,6 +183,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 				if (i != player.internalMapIcons.end())
 				{
 					ompgdk::RemovePlayerMapIcon(player.playerId, i->second);
+					pacer->consume(player, StreamCost::REMOVE_MAP_ICON_BYTES, StreamCost::MAP_ICON_WORK);
 					std::unordered_map<int, Item::SharedMapIcon>::iterator m = core->getData()->mapIcons.find(*r);
 					if (m != core->getData()->mapIcons.end())
 					{
@@ -196,12 +198,12 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 				r = player.removedMapIcons.erase(r);
 			}
 		}
-		else
+		if (player.removedMapIcons.empty())
 		{
 			Item::Bimap<Item::SharedMapIcon>::Type::left_iterator d = player.discoveredMapIcons.left.begin();
 			while (d != player.discoveredMapIcons.left.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_MAP_ICON]))
 				{
 					break;
 				}
@@ -222,6 +224,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 							if (j != player.internalMapIcons.end())
 							{
 								ompgdk::RemovePlayerMapIcon(player.playerId, j->second);
+								pacer->consume(player, StreamCost::REMOVE_MAP_ICON_BYTES, StreamCost::MAP_ICON_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
 									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<0>(e->second), player.playerId));
@@ -245,6 +248,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 				}
 				int internalId = player.mapIconIdentifier.get();
 				ompgdk::SetPlayerMapIcon(player.playerId, internalId, std::get<1>(d->second)->position[0], std::get<1>(d->second)->position[1], std::get<1>(d->second)->position[2], std::get<1>(d->second)->type, std::get<1>(d->second)->color, std::get<1>(d->second)->style);
+				pacer->consume(player, StreamCost::SET_MAP_ICON_BYTES, StreamCost::MAP_ICON_WORK);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
 					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<1>(d->second)->mapIconId, player.playerId));
@@ -268,6 +272,8 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 
 void ChunkStreamer::discoverObjects(Player &player, const std::vector<SharedCell> &cells)
 {
+	player.discoveredObjects.clear();
+	player.existingObjects.clear();
 	for (std::vector<SharedCell>::const_iterator c = cells.begin(); c != cells.end(); ++c)
 	{
 		for (std::unordered_map<int, Item::SharedObject>::const_iterator o = (*c)->objects.begin(); o != (*c)->objects.end(); ++o)
@@ -300,6 +306,7 @@ void ChunkStreamer::discoverObjects(Player &player, const std::vector<SharedCell
 				}
 				else
 				{
+					player.removedObjects.erase(o->first);
 					if (o->second->cell)
 					{
 						player.visibleCell->objects.insert(*o);
@@ -324,16 +331,16 @@ void ChunkStreamer::discoverObjects(Player &player, const std::vector<SharedCell
 
 void ChunkStreamer::streamObjects(Player &player, bool automatic)
 {
+	NetworkPacer *pacer = core->getNetworkPacer();
 	if (!automatic || ++player.chunkTickCount[STREAMER_TYPE_OBJECT] >= player.chunkTickRate[STREAMER_TYPE_OBJECT])
 	{
-		std::size_t effectiveChunkSize = automatic ? throttledSize(chunkSize[STREAMER_TYPE_OBJECT], player.networkPacketLoss) : chunkSize[STREAMER_TYPE_OBJECT];
 		std::size_t chunkCount = 0;
 		if (!player.removedObjects.empty())
 		{
 			std::unordered_set<int>::iterator r = player.removedObjects.begin();
 			while (r != player.removedObjects.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_OBJECT]))
 				{
 					break;
 				}
@@ -341,6 +348,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 				if (i != player.internalObjects.end())
 				{
 					ompgdk::DestroyPlayerObject(player.playerId, i->second);
+					pacer->consume(player, StreamCost::SMALL_OBJECT_RPC_BYTES, StreamCost::DESTROY_WORK);
 					std::unordered_map<int, Item::SharedObject>::iterator o = core->getData()->objects.find(*r);
 					if (o != core->getData()->objects.end())
 					{
@@ -354,13 +362,14 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 				r = player.removedObjects.erase(r);
 			}
 		}
-		else
+		if (player.removedObjects.empty())
 		{
 			bool streamingCanceled = false;
+			std::size_t materialCount = 0;
 			Item::Bimap<Item::SharedObject>::Type::left_iterator d = player.discoveredObjects.left.begin();
 			while (d != player.discoveredObjects.left.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_OBJECT]))
 				{
 					break;
 				}
@@ -368,6 +377,11 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 				if (i != player.internalObjects.end())
 				{
 					d = player.discoveredObjects.left.erase(d);
+					continue;
+				}
+				if (!automatic && pacer->getEnabled() && !pacer->isInstantStreamDistance(std::get<1>(d->first)))
+				{
+					++d;
 					continue;
 				}
 				int internalBaseId = INVALID_STREAMER_ID;
@@ -384,6 +398,11 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 						internalBaseId = j->second;
 					}
 				}
+				std::size_t slotCount = std::get<1>(d->second)->materials.size();
+				if (automatic && materialCount > 0 && materialCount + slotCount > materialChunkSize)
+				{
+					break;
+				}
 				if (player.internalObjects.size() == player.currentVisibleObjects)
 				{
 					Item::Bimap<Item::SharedObject>::Type::left_reverse_iterator e = player.existingObjects.left.rbegin();
@@ -395,6 +414,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 							if (j != player.internalObjects.end())
 							{
 								ompgdk::DestroyPlayerObject(player.playerId, j->second);
+								pacer->consume(player, StreamCost::SMALL_OBJECT_RPC_BYTES, StreamCost::DESTROY_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
 									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(e->second), player.playerId));
@@ -415,12 +435,50 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 					streamingCanceled = true;
 					break;
 				}
+				bool inlineMaterials = slotCount && core->getMaterialInliner()->getEnabled();
+				if (inlineMaterials)
+				{
+					core->getMaterialInliner()->begin(player.playerId);
+				}
 				int internalId = ompgdk::CreatePlayerObject(player.playerId, std::get<1>(d->second)->modelId, std::get<1>(d->second)->position[0], std::get<1>(d->second)->position[1], std::get<1>(d->second)->position[2], std::get<1>(d->second)->rotation[0], std::get<1>(d->second)->rotation[1], std::get<1>(d->second)->rotation[2], std::get<1>(d->second)->drawDistance);
 				if (internalId == INVALID_OBJECT_ID)
 				{
+					if (inlineMaterials)
+					{
+						core->getMaterialInliner()->finish();
+					}
 					streamingCanceled = true;
 					break;
 				}
+				int bytes = StreamCost::CREATE_OBJECT_BYTES;
+				float work = StreamCost::CREATE_WORK;
+				int messages = 1;
+				for (std::unordered_map<int, Item::Object::Material>::iterator m = std::get<1>(d->second)->materials.begin(); m != std::get<1>(d->second)->materials.end(); ++m)
+				{
+					if (m->second.main)
+					{
+						ompgdk::SetPlayerObjectMaterial(player.playerId, internalId, m->first, m->second.main->modelId, m->second.main->txdFileName.c_str(), m->second.main->textureName.c_str(), m->second.main->materialColor);
+						bytes += StreamCost::MATERIAL_BYTES + static_cast<int>(m->second.main->txdFileName.length() + m->second.main->textureName.length());
+						work += StreamCost::MATERIAL_WORK;
+						++messages;
+					}
+					else if (m->second.text)
+					{
+						const std::string &text = Utility::getMaterialTextForLanguage(m->second.text, player.language);
+						ompgdk::SetPlayerObjectMaterialText(player.playerId, internalId, text.c_str(), m->first, m->second.text->materialSize, m->second.text->fontFace.c_str(), m->second.text->fontSize, m->second.text->bold, m->second.text->fontColor, m->second.text->backColor, m->second.text->textAlignment);
+						bytes += StreamCost::MATERIAL_TEXT_BYTES + static_cast<int>(m->second.text->fontFace.length() + text.length());
+						work += StreamCost::MATERIAL_TEXT_WORK;
+						++messages;
+					}
+				}
+				// The inlined CreateObject only goes out here, so attach and move RPCs must come after
+				if (inlineMaterials)
+				{
+					ObjectMaterialInliner::SentRpcs sent = core->getMaterialInliner()->finish();
+					bytes = sent.bytes;
+					messages = sent.messages;
+				}
+				pacer->consume(player, bytes, work, messages);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
 					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(d->second), player.playerId));
@@ -430,27 +488,29 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 					if (internalBaseId != INVALID_STREAMER_ID)
 					{
 						ompgdk::AttachPlayerObjectToObject(player.playerId, internalId, internalBaseId, std::get<1>(d->second)->attach->positionOffset[0], std::get<1>(d->second)->attach->positionOffset[1], std::get<1>(d->second)->attach->positionOffset[2], std::get<1>(d->second)->attach->rotation[0], std::get<1>(d->second)->attach->rotation[1], std::get<1>(d->second)->attach->rotation[2]);
+						pacer->consume(player, StreamCost::ATTACH_OBJECT_BYTES, 0.0f);
 					}
 					else if (std::get<1>(d->second)->attach->player != INVALID_PLAYER_ID)
 					{
 						ompgdk::AttachPlayerObjectToPlayer(player.playerId, internalId, std::get<1>(d->second)->attach->player, std::get<1>(d->second)->attach->positionOffset[0], std::get<1>(d->second)->attach->positionOffset[1], std::get<1>(d->second)->attach->positionOffset[2], std::get<1>(d->second)->attach->rotation[0], std::get<1>(d->second)->attach->rotation[1], std::get<1>(d->second)->attach->rotation[2]);
+						pacer->consume(player, StreamCost::ATTACH_OBJECT_BYTES, 0.0f);
 					}
 					else if (std::get<1>(d->second)->attach->vehicle != INVALID_VEHICLE_ID)
 					{
 						ompgdk::AttachPlayerObjectToVehicle(player.playerId, internalId, std::get<1>(d->second)->attach->vehicle, std::get<1>(d->second)->attach->positionOffset[0], std::get<1>(d->second)->attach->positionOffset[1], std::get<1>(d->second)->attach->positionOffset[2], std::get<1>(d->second)->attach->rotation[0], std::get<1>(d->second)->attach->rotation[1], std::get<1>(d->second)->attach->rotation[2]);
+						pacer->consume(player, StreamCost::ATTACH_OBJECT_BYTES, 0.0f);
 					}
 				}
 				else if (std::get<1>(d->second)->move)
 				{
 					ompgdk::MovePlayerObject(player.playerId, internalId, std::get<0>(std::get<1>(d->second)->move->position)[0], std::get<0>(std::get<1>(d->second)->move->position)[1], std::get<0>(std::get<1>(d->second)->move->position)[2], std::get<1>(d->second)->move->speed, std::get<0>(std::get<1>(d->second)->move->rotation)[0], std::get<0>(std::get<1>(d->second)->move->rotation)[1], std::get<0>(std::get<1>(d->second)->move->rotation)[2]);
+					pacer->consume(player, StreamCost::MOVE_OBJECT_BYTES, 0.0f);
 				}
-				if (!std::get<1>(d->second)->materials.empty())
-				{
-					player.pendingMaterials.push_back(std::make_pair(std::get<0>(d->second), internalId));
-				}
+				materialCount += slotCount;
 				if (std::get<1>(d->second)->noCameraCollision)
 				{
 					ompgdk::SetPlayerObjectNoCameraCol(player.playerId, internalId);
+					pacer->consume(player, StreamCost::SMALL_OBJECT_RPC_BYTES, 0.0f);
 				}
 				player.insertInternalObject(std::get<0>(d->second), internalId);
 				if (std::get<1>(d->second)->cell)
@@ -476,6 +536,8 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 
 void ChunkStreamer::discoverTextLabels(Player &player, const std::vector<SharedCell> &cells)
 {
+	player.discoveredTextLabels.clear();
+	player.existingTextLabels.clear();
 	for (std::vector<SharedCell>::const_iterator c = cells.begin(); c != cells.end(); ++c)
 	{
 		for (std::unordered_map<int, Item::SharedTextLabel>::const_iterator t = (*c)->textLabels.begin(); t != (*c)->textLabels.end(); ++t)
@@ -508,6 +570,7 @@ void ChunkStreamer::discoverTextLabels(Player &player, const std::vector<SharedC
 				}
 				else
 				{
+					player.removedTextLabels.erase(t->first);
 					if (t->second->cell)
 					{
 						player.visibleCell->textLabels.insert(*t);
@@ -532,16 +595,16 @@ void ChunkStreamer::discoverTextLabels(Player &player, const std::vector<SharedC
 
 void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 {
+	NetworkPacer *pacer = core->getNetworkPacer();
 	if (!automatic || ++player.chunkTickCount[STREAMER_TYPE_3D_TEXT_LABEL] >= player.chunkTickRate[STREAMER_TYPE_3D_TEXT_LABEL])
 	{
-		std::size_t effectiveChunkSize = automatic ? throttledSize(chunkSize[STREAMER_TYPE_3D_TEXT_LABEL], player.networkPacketLoss) : chunkSize[STREAMER_TYPE_3D_TEXT_LABEL];
 		std::size_t chunkCount = 0;
 		if (!player.removedTextLabels.empty())
 		{
 			std::unordered_set<int>::iterator r = player.removedTextLabels.begin();
 			while (r != player.removedTextLabels.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_3D_TEXT_LABEL]))
 				{
 					break;
 				}
@@ -549,6 +612,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 				if (i != player.internalTextLabels.end())
 				{
 					ompgdk::DeletePlayer3DTextLabel(player.playerId, i->second);
+					pacer->consume(player, StreamCost::DELETE_TEXT_LABEL_BYTES, StreamCost::DESTROY_WORK);
 					std::unordered_map<int, Item::SharedTextLabel>::iterator t = core->getData()->textLabels.find(*r);
 					if (t != core->getData()->textLabels.end())
 					{
@@ -562,13 +626,13 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 				r = player.removedTextLabels.erase(r);
 			}
 		}
-		else
+		if (player.removedTextLabels.empty())
 		{
 			bool streamingCanceled = false;
 			Item::Bimap<Item::SharedTextLabel>::Type::left_iterator d = player.discoveredTextLabels.left.begin();
 			while (d != player.discoveredTextLabels.left.end())
 			{
-				if (automatic && ++chunkCount > effectiveChunkSize)
+				if (!pacer->canSend(player, automatic) || (automatic && ++chunkCount > chunkSize[STREAMER_TYPE_3D_TEXT_LABEL]))
 				{
 					break;
 				}
@@ -576,6 +640,11 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 				if (i != player.internalTextLabels.end())
 				{
 					d = player.discoveredTextLabels.left.erase(d);
+					continue;
+				}
+				if (!automatic && pacer->getEnabled() && !pacer->isInstantStreamDistance(std::get<1>(d->first)))
+				{
+					++d;
 					continue;
 				}
 				if (player.internalTextLabels.size() == player.currentVisibleTextLabels)
@@ -589,6 +658,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 							if (j != player.internalTextLabels.end())
 							{
 								ompgdk::DeletePlayer3DTextLabel(player.playerId, j->second);
+								pacer->consume(player, StreamCost::DELETE_TEXT_LABEL_BYTES, StreamCost::DESTROY_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
 									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(e->second), player.playerId));
@@ -609,12 +679,14 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 					streamingCanceled = true;
 					break;
 				}
-				int internalId = ompgdk::CreatePlayer3DTextLabel(player.playerId, Utility::getTextLabelTextForLanguage(std::get<1>(d->second), player.language).c_str(), std::get<1>(d->second)->color, std::get<1>(d->second)->position[0], std::get<1>(d->second)->position[1], std::get<1>(d->second)->position[2], std::get<1>(d->second)->drawDistance, std::get<1>(d->second)->attach ? std::get<1>(d->second)->attach->player : INVALID_PLAYER_ID, std::get<1>(d->second)->attach ? std::get<1>(d->second)->attach->vehicle : INVALID_VEHICLE_ID, std::get<1>(d->second)->testLOS);
+				const std::string &text = Utility::getTextLabelTextForLanguage(std::get<1>(d->second), player.language);
+				int internalId = ompgdk::CreatePlayer3DTextLabel(player.playerId, text.c_str(), std::get<1>(d->second)->color, std::get<1>(d->second)->position[0], std::get<1>(d->second)->position[1], std::get<1>(d->second)->position[2], std::get<1>(d->second)->drawDistance, std::get<1>(d->second)->attach ? std::get<1>(d->second)->attach->player : INVALID_PLAYER_ID, std::get<1>(d->second)->attach ? std::get<1>(d->second)->attach->vehicle : INVALID_VEHICLE_ID, std::get<1>(d->second)->testLOS);
 				if (internalId == INVALID_TEXT_LABEL_ID)
 				{
 					streamingCanceled = true;
 					break;
 				}
+				pacer->consume(player, StreamCost::CREATE_TEXT_LABEL_BYTES + static_cast<int>(text.length()), StreamCost::CREATE_WORK);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
 					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(d->second), player.playerId));
@@ -638,48 +710,5 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 	{
 		player.existingTextLabels.clear();
 		player.processingChunks.reset(STREAMER_TYPE_3D_TEXT_LABEL);
-	}
-}
-
-void ChunkStreamer::streamMaterials(Player &player, bool automatic)
-{
-	std::size_t effectiveChunkSize = automatic ? throttledSize(materialChunkSize, player.networkPacketLoss) : materialChunkSize;
-	std::size_t chunkCount = 0;
-	while (!player.pendingMaterials.empty())
-	{
-		int streamerId = player.pendingMaterials.front().first;
-		int internalId = player.pendingMaterials.front().second;
-		std::unordered_map<int, Item::SharedObject>::iterator o = core->getData()->objects.find(streamerId);
-		if (o == core->getData()->objects.end())
-		{
-			player.pendingMaterials.pop_front();
-			continue;
-		}
-		std::unordered_map<int, int>::iterator i = player.internalObjects.find(streamerId);
-		if (i == player.internalObjects.end() || i->second != internalId)
-		{
-			player.pendingMaterials.pop_front();
-			continue;
-		}
-		std::size_t slotCount = o->second->materials.size();
-		// chunkCount > 0: first object always bypasses the limit to prevent
-		// starvation when a single object has more slots than effectiveChunkSize
-		if (automatic && chunkCount > 0 && chunkCount + slotCount > effectiveChunkSize)
-		{
-			break;
-		}
-		player.pendingMaterials.pop_front();
-		for (std::unordered_map<int, Item::Object::Material>::iterator m = o->second->materials.begin(); m != o->second->materials.end(); ++m)
-		{
-			if (m->second.main)
-			{
-				ompgdk::SetPlayerObjectMaterial(player.playerId, internalId, m->first, m->second.main->modelId, m->second.main->txdFileName.c_str(), m->second.main->textureName.c_str(), m->second.main->materialColor);
-			}
-			else if (m->second.text)
-			{
-				ompgdk::SetPlayerObjectMaterialText(player.playerId, internalId, Utility::getMaterialTextForLanguage(m->second.text, player.language).c_str(), m->first, m->second.text->materialSize, m->second.text->fontFace.c_str(), m->second.text->fontSize, m->second.text->bold, m->second.text->fontColor, m->second.text->backColor, m->second.text->textAlignment);
-			}
-		}
-		chunkCount += slotCount;
 	}
 }

@@ -38,26 +38,6 @@ public:
 		chunkStreamingEnabled = enabled;
 	}
 
-	inline bool getThrottleEnabled()
-	{
-		return throttleEnabled;
-	}
-
-	inline void setThrottleEnabled(bool enabled)
-	{
-		throttleEnabled = enabled;
-	}
-
-	inline bool getThrottleDebugEnabled()
-	{
-		return throttleDebugEnabled;
-	}
-
-	inline void setThrottleDebugEnabled(bool enabled)
-	{
-		throttleDebugEnabled = enabled;
-	}
-
 	void performPlayerChunkUpdate(Player &player, bool automatic);
 
 	void discoverMapIcons(Player &player, const std::vector<SharedCell> &cells);
@@ -82,30 +62,14 @@ public:
 		return false;
 	}
 
-	static constexpr float THROTTLE_TIER1 = 2.0f;
-	static constexpr float THROTTLE_TIER2 = 5.0f;
-	static constexpr float THROTTLE_TIER3 = 10.0f;
-
 private:
-	inline std::size_t throttledSize(std::size_t base, float packetLoss) const
-	{
-		if (!throttleEnabled) return base;
-		auto clamp1 = [](std::size_t v) { return v ? v : std::size_t(1); };
-		if (packetLoss >= THROTTLE_TIER3) return clamp1(base / 4);
-		if (packetLoss >= THROTTLE_TIER2) return clamp1(base / 2);
-		if (packetLoss >= THROTTLE_TIER1) return clamp1(base * 3 / 4);
-		return base;
-	}
 	void streamMapIcons(Player &player, bool automatic);
 	void streamObjects(Player &player, bool automatic);
 	void streamTextLabels(Player &player, bool automatic);
-	void streamMaterials(Player &player, bool automatic);
 
 	std::size_t chunkSize[STREAMER_MAX_TYPES];
 	std::size_t materialChunkSize;
 	bool chunkStreamingEnabled;
-	bool throttleEnabled;
-	bool throttleDebugEnabled;
 };
 
 #endif
