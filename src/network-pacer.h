@@ -53,7 +53,6 @@ struct NetworkBudget
 	float clientWorkRate = -1.0f;
 	float clientWorkBurst = 0.0f;
 	float clientWorkTokens = 0.0f;
-	bool congested = false;
 	std::chrono::steady_clock::time_point debugTime;
 	float messageBytes = 0.0f;
 	std::chrono::steady_clock::time_point refillTime;
@@ -146,7 +145,6 @@ public:
 	void refill(Player &player);
 	void sample(Player &player);
 	bool readStatistics(const Player &player, NetworkStats &stats) const;
-	bool isCongested(Player &player);
 	bool canSend(const Player &player, bool automatic) const;
 	void consume(Player &player, int bytes, float work, int messages = 1) const;
 

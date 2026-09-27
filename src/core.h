@@ -22,7 +22,6 @@
 #include "grid.h"
 #include "network-pacer.h"
 #include "object-material-inline.h"
-#include "object-unreliable-updates.h"
 #include "streamer.h"
 
 class Core
@@ -60,11 +59,6 @@ public:
 		return materialInliner.get();
 	}
 
-	inline ObjectUnreliableUpdates *getUnreliableUpdates()
-	{
-		return unreliableUpdates.get();
-	}
-
 	inline IPlayerPool *getPlayers()
 	{
 		return players;
@@ -93,7 +87,6 @@ private:
 
 	std::unique_ptr<NetworkPacer> networkPacer;
 	std::unique_ptr<ObjectMaterialInliner> materialInliner;
-	std::unique_ptr<ObjectUnreliableUpdates> unreliableUpdates;
 
 	IPlayerPool *players = nullptr;
 	ICore *ompCore = nullptr;
