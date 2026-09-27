@@ -49,6 +49,9 @@ struct NetworkBudget
 {
 	int allowance = 0;
 	double bitsPerSecond = 0.0;
+	// A negative rate means the global setting applies
+	float clientWorkRate = -1.0f;
+	float clientWorkBurst = 0.0f;
 	float clientWorkTokens = 0.0f;
 	std::chrono::steady_clock::time_point debugTime;
 	float messageBytes = 0.0f;

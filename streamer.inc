@@ -240,6 +240,8 @@ native Streamer_GetNetworkQueueTime();
 native Streamer_SetNetworkQueueTime(milliseconds);
 native Streamer_GetClientWorkRate(&Float:rate, &Float:burst);
 native Streamer_SetClientWorkRate(Float:rate, Float:burst = 50.0);
+native Streamer_GetPlayerClientWorkRate(playerid, &Float:rate, &Float:burst);
+native Streamer_SetPlayerClientWorkRate(playerid, Float:rate = -1.0, Float:burst = 50.0);
 native Streamer_GetInstantStreamRadius(&Float:radius);
 native Streamer_SetInstantStreamRadius(Float:radius);
 native Streamer_GetPlayerNetworkStats(playerid, &pendingitems, &queuedmessages, &resendmessages, &Float:kbps);

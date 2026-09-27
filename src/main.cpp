@@ -83,6 +83,8 @@ AMX_NATIVE_INFO natives[] =
 	{ "Streamer_SetNetworkQueueTime", Natives::Streamer_SetNetworkQueueTime },
 	{ "Streamer_GetClientWorkRate", Natives::Streamer_GetClientWorkRate },
 	{ "Streamer_SetClientWorkRate", Natives::Streamer_SetClientWorkRate },
+	{ "Streamer_GetPlayerClientWorkRate", Natives::Streamer_GetPlayerClientWorkRate },
+	{ "Streamer_SetPlayerClientWorkRate", Natives::Streamer_SetPlayerClientWorkRate },
 	{ "Streamer_GetInstantStreamRadius", Natives::Streamer_GetInstantStreamRadius },
 	{ "Streamer_SetInstantStreamRadius", Natives::Streamer_SetInstantStreamRadius },
 	{ "Streamer_GetPlayerNetworkStats", Natives::Streamer_GetPlayerNetworkStats },

@@ -83,6 +83,8 @@ namespace Natives
 	cell AMX_NATIVE_CALL Streamer_SetNetworkQueueTime(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_GetClientWorkRate(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_SetClientWorkRate(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_GetPlayerClientWorkRate(AMX *amx, cell *params);
+	cell AMX_NATIVE_CALL Streamer_SetPlayerClientWorkRate(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_GetInstantStreamRadius(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_SetInstantStreamRadius(AMX *amx, cell *params);
 	cell AMX_NATIVE_CALL Streamer_GetPlayerNetworkStats(AMX *amx, cell *params);

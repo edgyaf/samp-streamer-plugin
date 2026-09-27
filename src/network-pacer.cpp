@@ -87,16 +87,19 @@ void NetworkPacer::refill(Player &player)
 {
 	NetworkBudget &budget = player.networkBudget;
 	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-	if (clientWorkRate > 0.0f)
+	bool playerOverride = budget.clientWorkRate >= 0.0f;
+	float rate = playerOverride ? budget.clientWorkRate : clientWorkRate;
+	float burst = playerOverride ? budget.clientWorkBurst : clientWorkBurst;
+	if (rate > 0.0f)
 	{
 		if (budget.refillTime.time_since_epoch().count())
 		{
 			float elapsed = std::chrono::duration<float>(now - budget.refillTime).count();
-			budget.clientWorkTokens = std::min(clientWorkBurst, budget.clientWorkTokens + clientWorkRate * elapsed);
+			budget.clientWorkTokens = std::min(burst, budget.clientWorkTokens + rate * elapsed);
 		}
 		else
 		{
-			budget.clientWorkTokens = clientWorkBurst;
+			budget.clientWorkTokens = burst;
 		}
 	}
 	else

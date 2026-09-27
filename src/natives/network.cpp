@@ -110,3 +110,34 @@ cell AMX_NATIVE_CALL Natives::Streamer_IsToggleInlineMaterials(AMX *amx, cell *p
 {
 	return static_cast<cell>(core->getMaterialInliner()->getEnabled());
 }
+
+cell AMX_NATIVE_CALL Natives::Streamer_GetPlayerClientWorkRate(AMX *amx, cell *params)
+{
+	CHECK_PARAMS(3);
+	std::unordered_map<int, Player>::iterator p = core->getData()->players.find(static_cast<int>(params[1]));
+	if (p != core->getData()->players.end())
+	{
+		Utility::storeFloatInNative(amx, params[2], p->second.networkBudget.clientWorkRate);
+		Utility::storeFloatInNative(amx, params[3], p->second.networkBudget.clientWorkBurst);
+		return 1;
+	}
+	return 0;
+}
+
+cell AMX_NATIVE_CALL Natives::Streamer_SetPlayerClientWorkRate(AMX *amx, cell *params)
+{
+	CHECK_PARAMS(3);
+	std::unordered_map<int, Player>::iterator p = core->getData()->players.find(static_cast<int>(params[1]));
+	if (p != core->getData()->players.end())
+	{
+		float rate = amx_ctof(params[2]), burst = amx_ctof(params[3]);
+		if (rate >= 0.0f && burst <= 0.0f)
+		{
+			return 0;
+		}
+		p->second.networkBudget.clientWorkRate = rate;
+		p->second.networkBudget.clientWorkBurst = burst;
+		return 1;
+	}
+	return 0;
+}
