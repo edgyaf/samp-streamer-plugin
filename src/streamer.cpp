@@ -814,7 +814,7 @@ void Streamer::processMapIcons(Player &player, const std::vector<SharedCell> &ce
 		{
 			continue;
 		}
-		if (player.internalMapIcons.size() == player.maxVisibleMapIcons)
+		if (player.internalMapIcons.size() >= player.maxVisibleMapIcons)
 		{
 			std::multimap<std::pair<int, float>, Item::SharedMapIcon, Item::PairCompare>::reverse_iterator e = existingMapIcons.rbegin();
 			if (e != existingMapIcons.rend())
@@ -839,7 +839,7 @@ void Streamer::processMapIcons(Player &player, const std::vector<SharedCell> &ce
 					existingMapIcons.erase(--e.base());
 				}
 			}
-			if (player.internalMapIcons.size() == player.maxVisibleMapIcons)
+			if (player.internalMapIcons.size() >= player.maxVisibleMapIcons)
 			{
 				break;
 			}
@@ -934,7 +934,7 @@ void Streamer::processObjects(Player &player, const std::vector<SharedCell> &cel
 				internalBaseId = j->second;
 			}
 		}
-		if (player.internalObjects.size() == player.currentVisibleObjects)
+		if (player.internalObjects.size() >= player.currentVisibleObjects)
 		{
 			std::multimap<std::pair<int, float>, Item::SharedObject, Item::PairCompare>::reverse_iterator e = existingObjects.rbegin();
 			if (e != existingObjects.rend())
@@ -959,7 +959,7 @@ void Streamer::processObjects(Player &player, const std::vector<SharedCell> &cel
 				}
 			}
 		}
-		if (player.internalObjects.size() == player.maxVisibleObjects)
+		if (player.internalObjects.size() >= player.maxVisibleObjects)
 		{
 			player.currentVisibleObjects = player.internalObjects.size();
 			break;
@@ -1220,7 +1220,7 @@ void Streamer::processTextLabels(Player &player, const std::vector<SharedCell> &
 		{
 			continue;
 		}
-		if (player.internalTextLabels.size() == player.currentVisibleTextLabels)
+		if (player.internalTextLabels.size() >= player.currentVisibleTextLabels)
 		{
 			std::multimap<std::pair<int, float>, Item::SharedTextLabel, Item::PairCompare>::reverse_iterator e = existingTextLabels.rbegin();
 			if (e != existingTextLabels.rend())
@@ -1245,7 +1245,7 @@ void Streamer::processTextLabels(Player &player, const std::vector<SharedCell> &
 				}
 			}
 		}
-		if (player.internalTextLabels.size() == player.maxVisibleTextLabels)
+		if (player.internalTextLabels.size() >= player.maxVisibleTextLabels)
 		{
 			player.currentVisibleTextLabels = player.internalTextLabels.size();
 			break;

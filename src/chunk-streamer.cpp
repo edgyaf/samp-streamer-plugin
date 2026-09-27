@@ -213,7 +213,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 					d = player.discoveredMapIcons.left.erase(d);
 					continue;
 				}
-				if (player.internalMapIcons.size() == player.maxVisibleMapIcons)
+				if (player.internalMapIcons.size() >= player.maxVisibleMapIcons)
 				{
 					Item::Bimap<Item::SharedMapIcon>::Type::left_reverse_iterator e = player.existingMapIcons.left.rbegin();
 					if (e != player.existingMapIcons.left.rend())
@@ -240,7 +240,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 							player.existingMapIcons.left.erase(--f);
 						}
 					}
-					if (player.internalMapIcons.size() == player.maxVisibleMapIcons)
+					if (player.internalMapIcons.size() >= player.maxVisibleMapIcons)
 					{
 						player.discoveredMapIcons.clear();
 						break;
@@ -403,7 +403,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 				{
 					break;
 				}
-				if (player.internalObjects.size() == player.currentVisibleObjects)
+				if (player.internalObjects.size() >= player.currentVisibleObjects)
 				{
 					Item::Bimap<Item::SharedObject>::Type::left_reverse_iterator e = player.existingObjects.left.rbegin();
 					if (e != player.existingObjects.left.rend())
@@ -430,7 +430,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 						}
 					}
 				}
-				if (player.internalObjects.size() == player.maxVisibleObjects)
+				if (player.internalObjects.size() >= player.maxVisibleObjects)
 				{
 					streamingCanceled = true;
 					break;
@@ -647,7 +647,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 					++d;
 					continue;
 				}
-				if (player.internalTextLabels.size() == player.currentVisibleTextLabels)
+				if (player.internalTextLabels.size() >= player.currentVisibleTextLabels)
 				{
 					Item::Bimap<Item::SharedTextLabel>::Type::left_reverse_iterator e = player.existingTextLabels.left.rbegin();
 					if (e != player.existingTextLabels.left.rend())
@@ -674,7 +674,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 						}
 					}
 				}
-				if (player.internalTextLabels.size() == player.maxVisibleTextLabels)
+				if (player.internalTextLabels.size() >= player.maxVisibleTextLabels)
 				{
 					streamingCanceled = true;
 					break;
