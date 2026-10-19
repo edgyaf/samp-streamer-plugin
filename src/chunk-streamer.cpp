@@ -189,7 +189,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 					{
 						if (m->second->streamCallbacks)
 						{
-							streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, *r, player.playerId));
+							core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, *r, player.playerId));
 						}
 					}
 					player.mapIconIdentifier.remove(i->second, player.internalMapIcons.size());
@@ -227,7 +227,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 								pacer->consume(player, StreamCost::REMOVE_MAP_ICON_BYTES, StreamCost::MAP_ICON_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
-									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<0>(e->second), player.playerId));
+									core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<0>(e->second), player.playerId));
 								}
 								player.mapIconIdentifier.remove(j->second, player.internalMapIcons.size());
 								player.internalMapIcons.erase(j);
@@ -251,7 +251,7 @@ void ChunkStreamer::streamMapIcons(Player &player, bool automatic)
 				pacer->consume(player, StreamCost::SET_MAP_ICON_BYTES, StreamCost::MAP_ICON_WORK);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
-					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<1>(d->second)->mapIconId, player.playerId));
+					core->getStreamer()->streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_MAP_ICON, std::get<1>(d->second)->mapIconId, player.playerId));
 				}
 				player.internalMapIcons.insert(std::make_pair(std::get<1>(d->second)->mapIconId, internalId));
 				if (std::get<1>(d->second)->cell)
@@ -354,7 +354,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 					{
 						if (o->second->streamCallbacks)
 						{
-							streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, *r, player.playerId));
+							core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, *r, player.playerId));
 						}
 					}
 					player.eraseInternalObject(i);
@@ -417,7 +417,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 								pacer->consume(player, StreamCost::SMALL_OBJECT_RPC_BYTES, StreamCost::DESTROY_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
-									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(e->second), player.playerId));
+									core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(e->second), player.playerId));
 								}
 								player.eraseInternalObject(j);
 							}
@@ -481,7 +481,7 @@ void ChunkStreamer::streamObjects(Player &player, bool automatic)
 				pacer->consume(player, bytes, work, messages);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
-					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(d->second), player.playerId));
+					core->getStreamer()->streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_OBJECT, std::get<0>(d->second), player.playerId));
 				}
 				if (std::get<1>(d->second)->attach)
 				{
@@ -618,7 +618,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 					{
 						if (t->second->streamCallbacks)
 						{
-							streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, *r, player.playerId));
+							core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, *r, player.playerId));
 						}
 					}
 					player.internalTextLabels.erase(i);
@@ -661,7 +661,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 								pacer->consume(player, StreamCost::DELETE_TEXT_LABEL_BYTES, StreamCost::DESTROY_WORK);
 								if (std::get<1>(e->second)->streamCallbacks)
 								{
-									streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(e->second), player.playerId));
+									core->getStreamer()->streamOutCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(e->second), player.playerId));
 								}
 								player.internalTextLabels.erase(j);
 							}
@@ -689,7 +689,7 @@ void ChunkStreamer::streamTextLabels(Player &player, bool automatic)
 				pacer->consume(player, StreamCost::CREATE_TEXT_LABEL_BYTES + static_cast<int>(text.length()), StreamCost::CREATE_WORK);
 				if (std::get<1>(d->second)->streamCallbacks)
 				{
-					streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(d->second), player.playerId));
+					core->getStreamer()->streamInCallbacks.push_back(std::make_tuple(STREAMER_TYPE_3D_TEXT_LABEL, std::get<0>(d->second), player.playerId));
 				}
 				player.internalTextLabels.insert(std::make_pair(std::get<0>(d->second), internalId));
 				if (std::get<1>(d->second)->cell)

@@ -58,6 +58,9 @@ public:
 	std::unordered_set<Item::SharedObject> attachedObjects;
 	std::unordered_set<Item::SharedTextLabel> attachedTextLabels;
 	std::unordered_set<Item::SharedObject> movingObjects;
+
+	std::vector<std::tuple<int, int, int> > streamInCallbacks;
+	std::vector<std::tuple<int, int, int> > streamOutCallbacks;
 private:
 	void calculateAverageElapsedTime();
 
@@ -97,9 +100,6 @@ private:
 
 	std::vector<int> objectMoveCallbacks;
 protected:
-	std::vector<std::tuple<int, int, int> > streamInCallbacks;
-	std::vector<std::tuple<int, int, int> > streamOutCallbacks;
-
 	template<std::size_t N, typename T>
 	inline bool doesPlayerSatisfyConditions(const std::bitset<N> &a, const T &b, const std::unordered_set<T> &c, const T &d, const std::unordered_set<T> &e, const T &f)
 	{
